@@ -111,3 +111,4 @@ class AgilentInstrument(SerialConnection):
     else:
       return self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE? MAX")
 
+#TODO: calibration commands
