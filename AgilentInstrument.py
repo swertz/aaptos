@@ -17,11 +17,11 @@ class AgilentInstrument(SerialConnection):
        :VOLTage[:LEVel]:TRIGgered[:AMPLitude]?[MIN|MAX]
   """
 
-  def __init__(self, index=0, label="", connection=None)
+  def __init__(self, index=0, label="", connection=None):
     self.index_ = index
     self.label_ = label
     self.isCurrent_ = (index==0)
-    if not isinstance(connection,SerialConnection)
+    if not isinstance(connection,SerialConnection):
       raise TypeError("Error: AgilentInstrument must be instantiated from an existing SerialConnection")
     self.serial = connection.serial
 
