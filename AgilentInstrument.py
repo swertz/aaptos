@@ -25,6 +25,9 @@ class AgilentInstrument(SerialConnection):
       raise TypeError("Error: AgilentInstrument must be instantiated from an existing SerialConnection")
     self.serial = connection.serial
 
+  def label():
+    return self.label_
+
   def __copy__(self):
     raise copy.error("AgilentInstrument cannot be copied")
 
@@ -111,4 +114,4 @@ class AgilentInstrument(SerialConnection):
     else:
       return self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE? MAX")
 
-#TODO: calibration commands
+  #TODO: calibration commands or procedure

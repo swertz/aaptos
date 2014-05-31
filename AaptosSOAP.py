@@ -1,6 +1,6 @@
 import SOAPpy
-import AgilentE3631A
-import AgilentE3633A
+from AgilentE3631A import AgilentE3631A
+from AgilentE3633A import AgilentE3633A
 
 class aaptos:
   def __init__(self):
@@ -42,8 +42,8 @@ class aaptos:
     
 # Start the server
 server = SOAPpy.SOAPServer(("localhost", 8080))
-aaptos_instance = aaptos()
-server.registerObject(aaptos_instance)
+server.registerObject(aaptos())
+#aaptos_instance = aaptos()
 #server.registerObject(aaptos_instance, namespace="aaptos")
 #server.registerObject(aaptos_instance.E3631A, namespace="E3631A")
 #server.registerObject(aaptos_instance.E3633A, namespace="E3633A")

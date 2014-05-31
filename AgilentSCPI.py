@@ -27,7 +27,7 @@ class AgilentSCPI(SerialConnection):
 
   def __init__(self, port='/dev/usb/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE, bytesize=serial.EIGHTBITS):
     """Initialize the connection to the device"""
-    SerialConnection.__init__(port,baudrate,parity,bytesize) 
+    SerialConnection.__init__(self,port,baudrate,parity,bytesize) 
 
   def beep(self):
     """This command issues a single beep immediately"""

@@ -6,7 +6,7 @@ class AgilentE3631A(AgilentSCPI):
   """Agilent E3631A Triple Output DC Power Supply"""
 
   def __init__(self,port='/dev/usb/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE, bytesize=serial.EIGHTBITS):
-    AgilentSCPI.__init__(port,baudrate,parity,bytesize)
+    AgilentSCPI.__init__(self,port,baudrate,parity,bytesize)
     self.setRemote()
     self.reset()
     assert "E3631A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3631A"

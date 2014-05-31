@@ -6,7 +6,7 @@ class AgilentE3633A(AgilentSCPI):
   """Agilent E3633A Triple Output DC Power Supply"""
 
   def __init__(self,port='/dev/usb/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE, bytesize=serial.EIGHTBITS):
-    AgilentSCPI.__init__(port,baudrate,parity,bytesize)
+    AgilentSCPI.__init__(self,port,baudrate,parity,bytesize)
     self.setRemote()
     self.reset()
     assert "E3633A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3633A"
@@ -51,11 +51,11 @@ class AgilentE3633A(AgilentSCPI):
 
   def applySettings(self,instrument,voltage,current):
     """The values of voltage and the current of the specified output are changed as soon as the command is executed"""
-    self.write("APPLY "+instrument+", "+str(voltage)+", "+str(current))
+    self.write("APPLY "+str(voltage)+", "+str(current))
 
   def readSettings(self,instrument):
     """This command queries the power supply's present voltage and current values for each output and returns a quoted string"""
-    return self.question("APPLY? "+instrument)
+    return self.question("APPLY? "+instrument) #TODO: return a decoded pair
 
   def couple(self,instrumentList=[]):
     """This command defines a coupling between various logical outputs of the power supply"""
