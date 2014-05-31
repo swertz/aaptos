@@ -2,21 +2,21 @@ import serial
 from AgilentSCPI import AgilentSCPI
 from AgilentInstrument import AgilentInstrument
 
-class AgilentE3631A(AgilentSCPI):
-  """Agilent E3631A Triple Output DC Power Supply"""
+class AgilentE3633A(AgilentSCPI):
+  """Agilent E3633A Triple Output DC Power Supply"""
 
   def __init__(self,port='/dev/usb/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE, bytesize=serial.EIGHTBITS):
     AgilentSCPI.__init__(port,baudrate,parity,bytesize)
     self.setRemote()
     self.reset()
-    assert "E3631A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3631A"
-    self.instruments_ = { "P6V":AgilentInstrument(1,"P6V",self), "P25V":AgilentInstrument(2,"P25V",self), "N25V":AgilentInstrument(3,"N25V",self) }
-    self.labels_ = { 1:"P6V", 2:"P25V", 3:"N25V" }
+    assert "E3633A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3633A"
+    self.instruments_ = { "P20V":gilentInstrument(0,"P20V",self) }
+    self.labels_ = { 0:"P20V" }
     self.currentInstrument_ = None
     self.enableDisplay()
     self.displayMessage("AAPTOS ONLINE...")
     self.beep()
-    self.selectInstrument(index=1)
+    self.selectInstrument(index=0)
 
   def selectInstrument(self, label=None, index=None):
     """This command selects the output to be programmed among three outputs"""
@@ -38,10 +38,7 @@ class AgilentE3631A(AgilentSCPI):
 
   def getSelected(self):
     """This query returns the currently selected output by the INSTrument"""
-    currentInstrument = self.question("INSTRUMENT:SELECT?")
-    assert currentInstrument in self.instruments_, "Error: unknown current instrument"
-    assert self.instruments_[currentInstrument].isCurrent(), "Error: current instrument mismatch"
-    return currentInstrument
+    return self.labels_[0]
 
   def setRemote(self, locked=False):
     if(locked):

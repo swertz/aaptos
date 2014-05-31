@@ -129,6 +129,6 @@ class AgilentSCPI(SerialConnection):
     self.write("*RCL "+str(index))
 
 
-#TODO: missing for now: registers (not critical)
+  #TODO: missing for now: registers (not critical)
 
 
