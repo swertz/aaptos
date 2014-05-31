@@ -1,4 +1,7 @@
 import SOAPpy
+import time
+import AaptosDb
+from threading import Thread
 from AgilentE3631A import AgilentE3631A
 from AgilentE3633A import AgilentE3633A
 
@@ -39,10 +42,12 @@ class aaptos:
   def turnOff(self):
     for device in self.devices:
       device.disable()
+
+#TODO method to know if each device is active or not
     
 # Start the server
-server = SOAPpy.SOAPServer(("localhost", 8080))
-server.registerObject(aaptos())
+#server = SOAPpy.SOAPServer(("localhost", 8080))
+#server.registerObject(aaptos())
 #aaptos_instance = aaptos()
 #server.registerObject(aaptos_instance, namespace="aaptos")
 #server.registerObject(aaptos_instance.E3631A, namespace="E3631A")
@@ -51,45 +56,43 @@ server.registerObject(aaptos())
 #server.registerObject(aaptos_instance.P25V, namespace="P25V")
 #server.registerObject(aaptos_instance.M25V, namespace="M25V")
 #server.registerObject(aaptos_instance.P20V, namespace="P20V")
-server.serve_forever()
+#server.serve_forever()
 
-#TODO: the server can be started as a thread, which would allow to start it together with the db in another thread
-#import Queue
-#import threading
-#import urllib2
-#
-## called by each thread
-#def get_url(q, url):
-#    q.put(urllib2.urlopen(url).read())
-#
-#theurls = '''http://google.com http://yahoo.com'''.split()
-#
-#q = Queue.Queue()
-#
-#for u in theurls:
-#    t = threading.Thread(target=get_url, args = (q,u))
-#    t.daemon = True
-#    t.start()
-#
-#s = q.get()
-#print s
+#example to use thread events to pause a thread: http://stackoverflow.com/questions/8103847/pausing-two-python-threads-while-a-third-one-does-stuff-with-locks
 
-# another example:
+#TODO: move the main to another file
 
-#from threading import Thread
-#
-#class worker(Thread):
-#    def run(self):
-#    	for x in xrange(0,11):
-#    		print x
-#    		time.sleep(1)
-#
-#class waiter(Thread):
-#    def run(self):
-#    	for x in xrange(100,103):
-#    		print x
-#    		time.sleep(5)
-#
-#def run():
-#    worker().start()
-#    waiter().start()
+def main():
+
+  class serverThread(Thread):
+    def run(self):
+      server = SOAPpy.SOAPServer(("localhost", 8080))
+      server.registerObject(aaptos())
+#TODO register a function to enable/disable the logging thread (via events, see example above)
+      server.serve_forever()
+
+  class loggerThread(Thread):
+    def run(self):
+      aaptos =  SOAPpy.SOAPProxy("http://localhost:8080/")
+      dbstore = AaptosDb.DbStore()
+      print "AAPTOS SOAP client for db logging started"
+      while True:
+        status = aaptos.getStatus()
+        for device,values in status.iteritems():
+          readings = supplyReadings()
+          readings.instrument = device
+          readings.voltage = values[0]
+          readings.current = values[1]
+          dbstore.add(readings)
+        dbstore.commit()
+        time.sleep(AaptosDb.pooldelay)
+  
+  serverThread().start()
+  loggerThread().start()
+
+#TODO investigate urwid as a third thread... or pyqt???
+#purpose: display status; control on/off; enable/disable logging
+
+if __name__ == '__main__':
+    main()
+
