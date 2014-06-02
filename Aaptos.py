@@ -43,13 +43,12 @@ def main():
     def __init__(group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None)
       Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs, daemon=daemon)
       self.serverRunning = kwargs["serverRunning"]
+      self.loggerEnabled = kwargs["loggerEnabled"]
     def run(self):
       self.serverRunning.wait()
       aaptos =  SOAPpy.SOAPProxy("http://localhost:8080/")
       print "Welcome"
-#TODO investigate urwid as a third thread... or pyqt??? or curses, simply.
-#https://docs.python.org/2/howto/curses.html
-#purpose: display status; control on/off; enable/disable logging, quit.
+#TODO replace by the npyscreen applet
       while True:
         sleep(5)
         status = aaptos.getStatus()
