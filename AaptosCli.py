@@ -184,8 +184,8 @@ class MyTestApp(npyscreen.NPSAppManaged):
         self.addForm("MAIN", MainForm , name = "Welcome to Aaptos")
 
 
-class MainForm(npyscreen.Form):
-#class MainForm(npyscreen.FormBaseNewWithMenus):
+#class MainForm(npyscreen.Form):
+class MainForm(npyscreen.FormBaseNewWithMenus):
     """This form class defines the display that will be presented to the user."""
 
     def update_clock(self,period=1):
@@ -198,10 +198,11 @@ class MainForm(npyscreen.Form):
     def create(self):
         # time info on top
         self.date_widget = self.add(npyscreen.FixedText, value=datetime.now().strftime("%b %d %Y %H:%M:%S"), editable=False)
-        t = threading.Thread(target=MainForm.update_clock, args = (self,1))
-        t.daemon = True
-        t.start()
-        self.nextrely += 1
+        #t = threading.Thread(target=MainForm.update_clock, args = (self,1))
+        #t.daemon = True
+        #t.start()
+        #self.nextrely += 1
+        #TODO: find another way to achieve this... this is incompatible with menus.
 
         # name, voltage, current
         rely = self.nextrely
@@ -217,12 +218,60 @@ class MainForm(npyscreen.Form):
         self.remoteLock  = self.add(npyscreen.RoundCheckBox, value=False, name="Lock front panel")
         self.dblog       = self.add(npyscreen.RoundCheckBox, value=False, name="Log values")
 
-#TODO: add a zone to display the logs and other messages
+        # The menus are created here.
+        self.m1 = self.add_menu(name="File", shortcut="^F")
+        self.m1.addItemsFromList([ ("Recall",self.do_recall,"^R"),
+                                   ("Save",self.do_save,"^S") ] )
+        self.m1s1 = self.m1.addNewSubmenu("Settings", "^E")
+        self.m1s1.addItemsFromList([ ("P6V",  self.do_settings, None, None, ("P6V",)),
+                                     ("P25V", self.do_settings, None, None, ("P25V",)),
+                                     ("M25V", self.do_settings, None, None, ("M25V",)),
+                                     ("P20V", self.do_settings, None, None, ("P20V",)) ] )
+        self.m1.addItemsFromList([ ("Quit",self.do_quit,"^Q") ] )
+        self.m2 = self.add_menu(name="SOAP", shortcut="^S")
+        self.m2.addItemsFromList([ ("Send custom command",self.do_soapCommand,"^O"),
+                                   ("Set SOAP server",self.do_soapServer,"^S") ] )
+        
+    def do_recall(self):
+      F = npyscreen.Popup(name="Memory to load settings from:", color="STANDOUT")
+      F.preserve_selected_widget = True
+      mlw = F.add(npyscreen.SelectOne,max_height=3, value = [0,], values = ["Memory 1","Memory 2","Memory 3"], scroll_exit=True)
+      mlw_width = mlw.width-1
+      F.editw = 1
+      F.edit()
+      #TODO: use the value below in a SOAP request
+      #mlw.value[0]+1
+
+    def do_save(self):
+      F = npyscreen.Popup(name="Memory to save settings to:", color="STANDOUT")
+      F.preserve_selected_widget = True
+      mlw = F.add(npyscreen.SelectOne,max_height=3, value = [0,], values = ["Memory 1","Memory 2","Memory 3"], scroll_exit=True)
+      mlw_width = mlw.width-1
+      F.editw = 1
+      F.edit()
+      #TODO: use the value below in a SOAP request
+      #mlw.value[0]+1
+
+    def do_settings(self, psunit):
+      #TODO: implement
+      F = npyscreen.Popup(name="Settings for "+psunit, color="STANDOUT")
+      F.preserve_selected_widget = True
+      #mlw = F.add()
+      #mlw_width = mlw.width-1
+      F.editw = 1
+      F.edit()
+
+    def do_soapCommand(self): pass
+
+    def do_soapServer(self): pass
 
     def afterEditing(self):
         self.parentApp.setNextForm(None)
 
-#TODO: add menu: settings (I,V for each, limits, etc.), SOAP server, save, recall, quit
+    def do_quit(self):
+      self.parentApp.setNextForm(None)
+      self.editing = False
+      self.parentApp.switchFormNow()
 
 #TODO: add the method that reacts to changes in widgets and sends SOAP commands accordingly (enable/disable, lock
 # also control the logger... this uses a threading.Event... how to communicate "outside"?
