@@ -1,7 +1,10 @@
 import npyscreen
+import SOAPpy
 from datetime import datetime
 import threading
 import time
+import types
+import socket
         
 #####################################################
 ## Widgets - to be used: PowerBox
@@ -19,7 +22,7 @@ class GaugeWidget(npyscreen.Slider):
         self.unit = keywords['unit']
 
     def translate_value(self):
-      stri = "%4.1f %s" % (self.value, self.unit)
+      stri = "%6.3f %s" % (self.value, self.unit)
       return stri
 
     def set_levels(self,levels):
@@ -27,7 +30,13 @@ class GaugeWidget(npyscreen.Slider):
       self.warning = levels[1]
       self.maximum = levels[2]
       self.out_of = levels[3]
-      self.step   = self.out_of/10.
+      #self.step   = self.out_of/10.
+      if self.__value < self.levels[1] :
+          self.color = "SAFE"
+      elif self.__value < self.levels[2]:
+          self.color = "WARNING"
+      else:
+          self.color = "DANGER"
 
     def get_levels(self):
       return (self.lowest, self.warning, self.maximum, self.out_of)
@@ -169,113 +178,240 @@ class PowerBox(npyscreen.BoxBasic):
 
     editable = property(get_editable, set_editable, del_editable)
 
+class activeCheckBox(npyscreen.RoundCheckBox):
+  def when_value_edited(self):
+    self.parent.reactToChange(self)
+
+class ConfirmCancelPopup(npyscreen.ActionPopup):
+    def on_ok(self):
+        self.value = True
+    def on_cancel(self):
+        self.value = False
+
 #####################################################
 ## App and Forms
 #####################################################
 
-class MyTestApp(npyscreen.NPSAppManaged):
+class MyAaptosCliApp(npyscreen.NPSAppManaged):
     """This application class serves as a wrapper for the initialization of curses
        and also manages the actual forms of the application"""
 
     keypress_timeout_default = 10
 
+    def __init__(self,soapProxy=None,loggerEnabled=None):
+        super(MyAaptosCliApp, self).__init__()
+        self.soapProxy=soapProxy
+        self.loggerEnabled=loggerEnabled
+
     def onStart(self):
-        #self.registerForm("MAIN", MainForm(name = "Welcome to Aaptos"))
+        # the SOAP client
+        if self.soapProxy is None:
+          self.soapProxy = SOAPpy.SOAPProxy("http://localhost:8080/")
+        # the forms
         self.addForm("MAIN", MainForm , name = "Welcome to Aaptos")
+        self.addFormClass("SETTINGSP6V",  SettingsForm, name = "P6V Settings" )
+        self.addFormClass("SETTINGSP25V", SettingsForm, name = "P25V Settings")
+        self.addFormClass("SETTINGSM25V", SettingsForm, name = "M25V Settings")
+        self.addFormClass("SETTINGSP20V", SettingsForm, name = "P20V Settings")
 
 
-#class MainForm(npyscreen.Form):
+class SettingsForm(npyscreen.ActionForm):
+
+   def create(self):
+     aaptos = self.parentApp.soapProxy
+     psunit = self.name.split()[0]
+     try:
+       (V,I) = aaptos.getInstrumentConfiguration(psunit)
+     except socket.error:
+       (V,I) = (0,0) # no error... it will anyway come if we try to save
+     self.voltage      = self.add(npyscreen.TitleText, name  = "Voltage (V):", value = str(V))
+     self.currentLimit = self.add(npyscreen.TitleText, name  = "Current (A):", value = str(I))
+     self.nextrely += 2
+
+     #levels are, for each instrument, min, max, warning, danger
+     #min and max are fixed by the hardware, warning and danger are just for display
+
+     levels = getattr(self.parentApp.getForm("MAIN"),psunit).get_levels()
+     try:
+       curMin = getattr(aaptos,"%s.getMinCurrentLimit"%psunit)()
+       curMax = getattr(aaptos,"%s.getMaxCurrentLimit"%psunit)()
+       voltMin = getattr(aaptos,"%s.getMinVoltage"%psunit)()
+       voltMax = getattr(aaptos,"%s.getMaxVoltage"%psunit)()
+     except socket.error:
+       curMin = levels[1][0]
+       curMax = levels[1][3]
+       voltMin= levels[0][0]
+       voltMax= levels[0][3]
+
+     self.voltageWarning = self.add(TitleGauge, name = "Voltage Warning Level", unit="V", step=0.1, 
+                                                levels=(voltMin,voltMin,voltMax,voltMax), value=levels[0][1])
+     self.voltageDanger  = self.add(TitleGauge, name = "Voltage Danger Level",  unit="V", step=0.1,
+                                                levels=(voltMin,voltMin,voltMin,voltMax), value=levels[0][2])
+     self.currentWarning = self.add(TitleGauge, name = "Current Warning Level", unit="A", step=0.01,
+                                                levels=(curMin,curMin,curMax,curMax), value=levels[1][1])
+     self.currentDanger  = self.add(TitleGauge, name = "Current Danger Level",  unit="A", step=0.01,
+                                                levels=(curMin,curMin,curMin,curMax), value=levels[1][2])
+
+   def on_ok(self):
+     psunit = self.name.split()[0]
+     # set the warning/danger levels
+     volt_tmp = self.voltageWarning.get_levels()
+     curr_tmp = self.currentWarning.get_levels()
+     getattr(self.parentApp.getForm("MAIN"),psunit).set_levels([(volt_tmp[0],self.voltageWarning.value,self.voltageDanger.value,volt_tmp[3]),
+                                                                (curr_tmp[0],self.currentWarning.value,self.currentDanger.value,curr_tmp[3])])
+     
+     # set the I,V values to the hardware     
+     aaptos = self.parentApp.soapProxy
+     try:
+       aaptos.configureInstrument(psunit,V=float(self.voltage.value), I=float(self.currentLimit.value))
+     except socket.error as e:
+       npyscreen.notify_wait("[Errno %s] %s"%(e.errno,e.strerror), title="Error", form_color='STANDOUT', wrap=True, wide=False)
+       self.parentApp.switchFormPrevious()
+     except ValueError as e:
+       npyscreen.notify_wait(e.message,title="Error", form_color='STANDOUT', wrap=True, wide=False)
+     else:
+       self.parentApp.switchFormPrevious()
+
+   def on_cancel(self):
+     self.parentApp.switchFormPrevious()
+
+
 class MainForm(npyscreen.FormBaseNewWithMenus):
     """This form class defines the display that will be presented to the user."""
 
-    def update_clock(self,period=1):
-        while True:
-          time.sleep(period)
-          self.date_widget.value = datetime.now().strftime("%b %d %Y %H:%M:%S")
-          self.display()
-          #TODO: add the SOAPy loop to update the values on screen
+    def update_clock(self):
+       self.date_widget.value = datetime.now().strftime("%b %d %Y %H:%M:%S")
+       self.display()
+
+    def update_fields(self):
+       aaptos = self.parentApp.soapProxy
+       # update V,I for each PS
+       try:
+         values = aaptos.getStatus()
+         for key,value in values.iteritems():
+           getattr(self,key).values=list(value)
+       except socket.error:
+         pass
+       # logger status
+       if self.parentApp.loggerEnabled is not None:
+         self.dblog.value = self.parentApp.loggerEnabled.isSet()
+       # on/off state
+       try:
+         self.enablePower = aaptos.state()
+       except socket.error:
+         pass
+
+    def while_waiting(self):
+        self.update_clock()
+        self.update_fields()
+
+    def reactToChange(self, widget):
+        aaptos = self.parentApp.soapProxy
+        if widget.name=="Log values":
+          if self.parentApp.loggerEnabled is not None:
+            if self.dblog.value:
+              self.parentApp.loggerEnabled.set()
+            else:
+              self.parentApp.loggerEnabled.clear()
+        elif widget.name=="Enabled":
+          try:
+            if self.enablePower.value:
+              aaptos.turnOn()
+            else:
+              aaptos.turnOff()
+          except socket.error:
+            pass
+        elif widget.name=="Lock front panel":
+          try:
+            aaptos.lock(self.remoteLock.value)
+          except socket.error:
+            pass
 
     def create(self):
         # time info on top
         self.date_widget = self.add(npyscreen.FixedText, value=datetime.now().strftime("%b %d %Y %H:%M:%S"), editable=False)
-        #t = threading.Thread(target=MainForm.update_clock, args = (self,1))
-        #t.daemon = True
-        #t.start()
-        #self.nextrely += 1
-        #TODO: find another way to achieve this... this is incompatible with menus.
+        self.nextrely += 1
 
         # name, voltage, current
+        #TODO: should implement methods to get levels and values from SOAP, when available, and fallback on this just in case.
         rely = self.nextrely
-        self.PS1 = self.add(PowerBox, name="P6V",  levels=[(0,5,5,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely)
-        self.PS2 = self.add(PowerBox, name="P25V", levels=[(0,5,5,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely, relx=55)
+        self.P6V = self.add(PowerBox, name="P6V",  levels=[(0,5,5,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely)
+        self.P25V = self.add(PowerBox, name="P25V", levels=[(0,5,5,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely, relx=55)
         rely = self.nextrely
-        self.PS3 = self.add(PowerBox, name="M25V", levels=[(0,6,6,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely)
-        self.PS4 = self.add(PowerBox, name="P20V", levels=[(0,6,6,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely, relx=55)
+        self.M25V = self.add(PowerBox, name="M25V", levels=[(0,6,6,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely)
+        self.P20V = self.add(PowerBox, name="P20V", levels=[(0,6,6,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely, relx=55)
         self.nextrely += 2
 
         # options
-        self.enablePower = self.add(npyscreen.RoundCheckBox, value=False, name="Enabled")
-        self.remoteLock  = self.add(npyscreen.RoundCheckBox, value=False, name="Lock front panel")
-        self.dblog       = self.add(npyscreen.RoundCheckBox, value=False, name="Log values")
+        self.enablePower = self.add(activeCheckBox, value=False, name="Enabled")
+        self.remoteLock  = self.add(activeCheckBox, value=False, name="Lock front panel")
+        self.dblog       = self.add(activeCheckBox, value=False, name="Log values", color = "NO_EDIT")
+        if self.parentApp.loggerEnabled is not None:
+          self.dblog.value = self.parentApp.loggerEnabled.isSet()
+        else:
+          self.dblog.name = "Log values (Not available)"
+          self.dblog.color = "NO_EDIT"
+          self.dblog.editable=False
 
         # The menus are created here.
-        self.m1 = self.add_menu(name="File", shortcut="^F")
-        self.m1.addItemsFromList([ ("Recall",self.do_recall,"^R"),
-                                   ("Save",self.do_save,"^S") ] )
-        self.m1s1 = self.m1.addNewSubmenu("Settings", "^E")
-        self.m1s1.addItemsFromList([ ("P6V",  self.do_settings, None, None, ("P6V",)),
-                                     ("P25V", self.do_settings, None, None, ("P25V",)),
-                                     ("M25V", self.do_settings, None, None, ("M25V",)),
-                                     ("P20V", self.do_settings, None, None, ("P20V",)) ] )
-        self.m1.addItemsFromList([ ("Quit",self.do_quit,"^Q") ] )
-        self.m2 = self.add_menu(name="SOAP", shortcut="^S")
-        self.m2.addItemsFromList([ ("Send custom command",self.do_soapCommand,"^O"),
-                                   ("Set SOAP server",self.do_soapServer,"^S") ] )
-        
+        self.menu = self.add_menu(name="File", shortcut="^F")
+        self.menu.addItemsFromList([ ("Recall",self.do_recall,"^R"),
+                                     ("Save",self.do_save,"^S") ] )
+        self.m1s1 = self.menu.addNewSubmenu("Settings", "^E")
+        self.m1s1.addItemsFromList([ ("P6V settings",  self.do_settings, None, None, ("P6V",)),
+                                     ("P25V settings", self.do_settings, None, None, ("P25V",)),
+                                     ("M25V settings", self.do_settings, None, None, ("M25V",)),
+                                     ("P20V settings", self.do_settings, None, None, ("P20V",)),
+                                     ("Set SOAP server",self.do_soapServer,"^S") ] )
+        self.menu.addItemsFromList([ ("Quit",self.do_quit,"^Q") ] )
+        #note: for now, settings = V,I for each instrument. More could be done with the devices themselves.
+ 
     def do_recall(self):
-      F = npyscreen.Popup(name="Memory to load settings from:", color="STANDOUT")
+      F = ConfirmCancelPopup(name="Memory to load settings from:", color="STANDOUT")
       F.preserve_selected_widget = True
       mlw = F.add(npyscreen.SelectOne,max_height=3, value = [0,], values = ["Memory 1","Memory 2","Memory 3"], scroll_exit=True)
       mlw_width = mlw.width-1
       F.editw = 1
       F.edit()
-      #TODO: use the value below in a SOAP request
-      #mlw.value[0]+1
+      if F.value:
+        try:
+          aaptos.recall(mlw.value[0]+1)
+        except socket.error as e:
+          npyscreen.notify_wait("[Errno %s] %s"%(e.errno,e.strerror), title="Error", form_color='STANDOUT', wrap=True, wide=False)
 
     def do_save(self):
-      F = npyscreen.Popup(name="Memory to save settings to:", color="STANDOUT")
+      F = ConfirmCancelPopup(name="Memory to save settings to:", color="STANDOUT")
       F.preserve_selected_widget = True
       mlw = F.add(npyscreen.SelectOne,max_height=3, value = [0,], values = ["Memory 1","Memory 2","Memory 3"], scroll_exit=True)
       mlw_width = mlw.width-1
       F.editw = 1
       F.edit()
-      #TODO: use the value below in a SOAP request
-      #mlw.value[0]+1
+      if F.value:
+        try:
+          aaptos.save(mlw.value[0]+1)
+        except socket.error as e:
+          npyscreen.notify_wait("[Errno %s] %s"%(e.errno,e.strerror), title="Error", form_color='STANDOUT', wrap=True, wide=False)
 
     def do_settings(self, psunit):
-      #TODO: implement
-      F = npyscreen.Popup(name="Settings for "+psunit, color="STANDOUT")
+      self.parentApp.switchForm('SETTINGS'+psunit)
+      
+    def do_soapServer(self):
+      aaptos = self.parentApp.soapProxy
+      F = ConfirmCancelPopup(name="SOAP server URL:", color="STANDOUT")
       F.preserve_selected_widget = True
-      #mlw = F.add()
-      #mlw_width = mlw.width-1
+      mlw = F.add(npyscreen.TitleText, name  = "URL:", value = str(aaptos.proxy))
+      mlw_width = mlw.width-1
       F.editw = 1
       F.edit()
-
-    def do_soapCommand(self): pass
-
-    def do_soapServer(self): pass
-
-    def afterEditing(self):
-        self.parentApp.setNextForm(None)
+      if F.value:
+        aaptos.proxy = mlw.value
 
     def do_quit(self):
-      self.parentApp.setNextForm(None)
-      self.editing = False
-      self.parentApp.switchFormNow()
-
-#TODO: add the method that reacts to changes in widgets and sends SOAP commands accordingly (enable/disable, lock
-# also control the logger... this uses a threading.Event... how to communicate "outside"?
+      if npyscreen.notify_ok_cancel("Quit the AAPTOS client?", title="Confirm", form_color='STANDOUT', wrap=True, editw = 1):
+        self.parentApp.setNextForm(None)
+        self.editing = False
+        self.parentApp.switchFormNow()
 
 if __name__ == '__main__':
-    TA = MyTestApp()
+    TA = MyAaptosCliApp()
     TA.run()

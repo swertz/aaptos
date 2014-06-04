@@ -23,9 +23,21 @@ class aaptos:
       result[i.label()] = (i.getMeasuredVoltage(), i.getMeasuredCurrent())
     return result
 
+  def configureInstrument(self,instrument,V,I, triggered=False):
+    getattr(self,instrument).setVoltage(V, triggered)
+    getattr(self,instrument).setCurrentLimit(I, triggered)
+
+  def getInstrumentConfiguration(self,instrument, triggered=False):
+    instr = getattr(self,instrument)
+    return (instr.getVoltage(triggered), instr.getCurrentLimit(triggered))
+    
   def recall(self, memory):
     for device in self.devices:
       device.recall(memory)
+
+  def save(self,memory):
+    for device in self.devices:
+      device.save(memory)
   
   def reconfigure(self, memory=None):
     self.E3631A.applySettings("P6V",1.2,0.001)
@@ -33,7 +45,7 @@ class aaptos:
     self.E3631A.applySettings("M25V",-5,0.05)
     self.E3633A.applySettings("P20V",3.3,0.25)
     if memory is not None:
-      device.save(memory)
+      self.save(memory)
 
   def turnOn(self):
     for device in self.devices:
@@ -42,6 +54,16 @@ class aaptos:
   def turnOff(self):
     for device in self.devices:
       device.disable()
+
+  def isOn(self):
+    output = True
+    for device in self.devices:
+      output &= int(device.state())
+    return output()
+
+  def lock(self, yesno):
+    for device in self.devices:
+      device.setRemote(locked=yesno) 
 
 #TODO method to know if each device is active or not
     

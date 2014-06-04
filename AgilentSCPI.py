@@ -120,6 +120,10 @@ class AgilentSCPI(SerialConnection):
     """This command disables all outputs of the power supply"""
     self.write("OUTPUT:STATE OFF")
 
+  def state(self):
+    """This command returns the current output state of the power supply"""
+    return self.question("OUTPUT:STATE?")
+
   def save(self, index=1):
     """This command stores the present state of the power supply to the specified location in non-volatile memory"""
     self.write("*SAV "+str(index))
