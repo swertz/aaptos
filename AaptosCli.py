@@ -1,5 +1,5 @@
 import npyscreen
-import SOAPpy
+import AaptosSOAP
 from datetime import datetime
 import threading
 import time
@@ -206,7 +206,7 @@ class MyAaptosCliApp(npyscreen.NPSAppManaged):
     def onStart(self):
         # the SOAP client
         if self.soapProxy is None:
-          self.soapProxy = SOAPpy.SOAPProxy("http://localhost:8080/")
+          self.soapProxy = AaptosSOAP.SOAPProxy("http://localhost:8080/")
         # the forms
         self.addForm("MAIN", MainForm , name = "Welcome to Aaptos", minimum_lines=20, columns=108)
         self.addFormClass("SETTINGSP6V",  SettingsForm, name = "P6V Settings" )

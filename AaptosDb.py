@@ -1,5 +1,5 @@
 from storm.locals import *
-import SOAPpy
+import AaptosSOAP
 import time
 
 def DbStore(login="aaptos", password="aaptos", database="localhost/aaptos"):
@@ -22,9 +22,9 @@ class supplyReadings(Storm):
 
 pooldelay=1
 
-def main()
+def main():
   """AAPTOS SOAP client for db logging of readings"""
-  aaptos =  SOAPpy.SOAPProxy("http://localhost:8080/")
+  aaptos =  AaptosSOAP.SOAPProxy("http://localhost:8080/")
   dbstore = DbStore()
   print "AAPTOS SOAP client for db logging started"
   while True:

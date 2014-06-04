@@ -65,18 +65,25 @@ class aaptos:
     for device in self.devices:
       device.setRemote(locked=yesno) 
 
-#TODO method to know if each device is active or not
-    
-# Start the server
-#server = SOAPpy.SOAPServer(("localhost", 8080))
-#server.registerObject(aaptos())
-#aaptos_instance = aaptos()
-#server.registerObject(aaptos_instance, namespace="aaptos")
-#server.registerObject(aaptos_instance.E3631A, namespace="E3631A")
-#server.registerObject(aaptos_instance.E3633A, namespace="E3633A")
-#server.registerObject(aaptos_instance.P6V, namespace="P6V")
-#server.registerObject(aaptos_instance.P25V, namespace="P25V")
-#server.registerObject(aaptos_instance.M25V, namespace="M25V")
-#server.registerObject(aaptos_instance.P20V, namespace="P20V")
-#server.serve_forever()
+class SOAPServer(SOAPpy.SOAPServer): pass
+
+class SOAPProxy(SOAPpy.SOAPProxy): pass
+
+
+def main():
+  # Start the server
+  server = SOAPpy.SOAPServer(("localhost", 8080))
+  server.registerObject(aaptos())
+  #aaptos_instance = aaptos()
+  #server.registerObject(aaptos_instance, namespace="aaptos")
+  #server.registerObject(aaptos_instance.E3631A, namespace="E3631A")
+  #server.registerObject(aaptos_instance.E3633A, namespace="E3633A")
+  #server.registerObject(aaptos_instance.P6V, namespace="P6V")
+  #server.registerObject(aaptos_instance.P25V, namespace="P25V")
+  #server.registerObject(aaptos_instance.M25V, namespace="M25V")
+  #server.registerObject(aaptos_instance.P20V, namespace="P20V")
+  server.serve_forever()
+
+if __name__ == '__main__':
+    main()
 
