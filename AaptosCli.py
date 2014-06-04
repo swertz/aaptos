@@ -208,7 +208,7 @@ class MyAaptosCliApp(npyscreen.NPSAppManaged):
         if self.soapProxy is None:
           self.soapProxy = SOAPpy.SOAPProxy("http://localhost:8080/")
         # the forms
-        self.addForm("MAIN", MainForm , name = "Welcome to Aaptos")
+        self.addForm("MAIN", MainForm , name = "Welcome to Aaptos", minimum_lines=20, columns=108)
         self.addFormClass("SETTINGSP6V",  SettingsForm, name = "P6V Settings" )
         self.addFormClass("SETTINGSP25V", SettingsForm, name = "P25V Settings")
         self.addFormClass("SETTINGSM25V", SettingsForm, name = "M25V Settings")
@@ -233,10 +233,14 @@ class SettingsForm(npyscreen.ActionForm):
 
      levels = getattr(self.parentApp.getForm("MAIN"),psunit).get_levels()
      try:
-       curMin = getattr(aaptos,"%s.getMinCurrentLimit"%psunit)()
-       curMax = getattr(aaptos,"%s.getMaxCurrentLimit"%psunit)()
-       voltMin = getattr(aaptos,"%s.getMinVoltage"%psunit)()
-       voltMax = getattr(aaptos,"%s.getMaxVoltage"%psunit)()
+       curMin = aaptos.invoke("%s.getMinCurrentLimit"%psunit,[])
+       curMax = aaptos.invoke("%s.getMaxCurrentLimit"%psunit,[])
+       voltMin = aaptos.invoke("%s.getMinVoltage"%psunit,[])
+       voltMax = aaptos.invoke("%s.getMaxVoltage"%psunit,[])
+       #curMin = getattr(aaptos,"%s.getMinCurrentLimit"%psunit)()
+       #curMax = getattr(aaptos,"%s.getMaxCurrentLimit"%psunit)()
+       #voltMin = getattr(aaptos,"%s.getMinVoltage"%psunit)()
+       #voltMax = getattr(aaptos,"%s.getMaxVoltage"%psunit)()
      except socket.error:
        curMin = levels[1][0]
        curMax = levels[1][3]
@@ -285,21 +289,21 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
 
     def update_fields(self):
        aaptos = self.parentApp.soapProxy
-       # update V,I for each PS
        try:
+         # update V,I for each PS
          values = aaptos.getStatus()
          for key,value in values.iteritems():
            getattr(self,key).values=list(value)
+         # on/off state
+         self.enablePower = aaptos.state()
        except socket.error:
-         pass
+         self.setStatus(False)
+       else:
+         self.setStatus(True)
+
        # logger status
        if self.parentApp.loggerEnabled is not None:
          self.dblog.value = self.parentApp.loggerEnabled.isSet()
-       # on/off state
-       try:
-         self.enablePower = aaptos.state()
-       except socket.error:
-         pass
 
     def while_waiting(self):
         self.update_clock()
@@ -320,26 +324,74 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
             else:
               aaptos.turnOff()
           except socket.error:
-            pass
+            self.setStatus(False)
+          else:
+            self.setStatus(True)
         elif widget.name=="Lock front panel":
           try:
             aaptos.lock(self.remoteLock.value)
           except socket.error:
-            pass
+            self.setStatus(False)
+          else:
+            self.setStatus(True)
+
+    def getDefaultLevels(self,instrument):
+        aaptos = self.parentApp.soapProxy
+        try:
+          curMin = aaptos.invoke("%s.getMinCurrentLimit"%instrument,[])
+          curMax = aaptos.invoke("%s.getMaxCurrentLimit"%instrument,[])
+          voltMin = aaptos.invoke("%s.getMinVoltage"%instrument,[])
+          voltMax = aaptos.invoke("%s.getMaxVoltage"%instrument,[])
+          #curMin = getattr(aaptos,"%s.getMinCurrentLimit"%instrument)()
+          #curMax = getattr(aaptos,"%s.getMaxCurrentLimit"%instrument)()
+          #voltMin = getattr(aaptos,"%s.getMinVoltage"%instrument)()
+          #voltMax = getattr(aaptos,"%s.getMaxVoltage"%instrument)()
+        except socket.error:
+          curMin = 0.
+          curMax = 1.
+          voltMin= 0.
+          voltMax= 25.
+          self.setStatus(False)
+        else:
+          self.setStatus(True)
+        return [(voltMin,(voltMax-voltMin)/3.,2.*(voltMax-voltMin)/3.,voltMax),(curMin,(curMax-curMin)/3.,2*(curMax-curMin)/3.,curMax)]
+
+    def setStatus(self,online):
+        if online:
+          self.status_widget.color="GOOD"
+          self.status_widget.value="ONLINE"
+        else:
+          self.status_widget.color="CRITICAL"
+          self.status_widget.value="OFFLINE"
 
     def create(self):
         # time info on top
         self.date_widget = self.add(npyscreen.FixedText, value=datetime.now().strftime("%b %d %Y %H:%M:%S"), editable=False)
+        self.nextrely -= 1
+
+        # a marker ONLINE/OFFLINE
+        self.status_widget = self.add(npyscreen.FixedText, value="OFFLINE", editable=False, color="CRITICAL", relx=96)
         self.nextrely += 1
 
         # name, voltage, current
-        #TODO: should implement methods to get levels and values from SOAP, when available, and fallback on this just in case.
         rely = self.nextrely
-        self.P6V = self.add(PowerBox, name="P6V",  levels=[(0,5,5,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely)
-        self.P25V = self.add(PowerBox, name="P25V", levels=[(0,5,5,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely, relx=55)
+        aaptos = self.parentApp.soapProxy
+        try:
+          values = aaptos.getStatus()
+        except socket.error as e:
+          values = { "P6V":[0,0], "P25V":[0,0], "M25V":[0,0], "M20V":[0,0] }
+          self.setStatus(False)
+        else:
+          self.setStatus(True)
+        self.P6V  = self.add(PowerBox, name="P6V",  levels=self.getDefaultLevels("P6V"),  
+                                       values=values["P6V"], width=50, height=4, rely=rely)
+        self.P25V = self.add(PowerBox, name="P25V", levels=self.getDefaultLevels("P25V"), 
+                                       values=values["P25V"], width=50, height=4, rely=rely, relx=55)
         rely = self.nextrely
-        self.M25V = self.add(PowerBox, name="M25V", levels=[(0,6,6,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely)
-        self.P20V = self.add(PowerBox, name="P20V", levels=[(0,6,6,6),(0,1,1.5,2)], values=[5,1.2], width=50, height=4, rely=rely, relx=55)
+        self.M25V = self.add(PowerBox, name="M25V", levels=self.getDefaultLevels("M25V"), 
+                                       values=values["M25V"], width=50, height=4, rely=rely)
+        self.P20V = self.add(PowerBox, name="P20V", levels=self.getDefaultLevels("P20V"), 
+                                       values=values["M20V"], width=50, height=4, rely=rely, relx=55)
         self.nextrely += 2
 
         # options
