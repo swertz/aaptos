@@ -39,7 +39,7 @@ class loggerThread(Thread):
       status = aaptos.getStatus()
       for device,values in status.iteritems():
         readings = AaptosDb.supplyReadings()
-        readings.instrument = device
+        readings.instrument = unicode(device)
         readings.voltage = values[0]
         readings.current = values[1]
         dbstore.add(readings)
