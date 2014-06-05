@@ -25,7 +25,7 @@ class AgilentInstrument(SerialConnection):
       raise TypeError("Error: AgilentInstrument must be instantiated from an existing SerialConnection")
     self.serial = connection.serial
 
-  def label():
+  def label(self):
     return self.label_
 
   def __copy__(self):

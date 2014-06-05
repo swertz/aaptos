@@ -1,6 +1,8 @@
 import serial
 from AgilentSCPI import AgilentSCPI
 from AgilentInstrument import AgilentInstrument
+#from DummySCPI import DummySCPI as AgilentSCPI
+#from DummyInstrument import DummyInstrument as AgilentInstrument
 
 class AgilentE3633A(AgilentSCPI):
   """Agilent E3633A Triple Output DC Power Supply"""
@@ -10,7 +12,7 @@ class AgilentE3633A(AgilentSCPI):
     self.setRemote()
     self.reset()
     assert "E3633A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3633A"
-    self.instruments_ = { "P20V":gilentInstrument(0,"P20V",self) }
+    self.instruments_ = { "P20V":AgilentInstrument(0,"P20V",self) }
     self.labels_ = { 0:"P20V" }
     self.currentInstrument_ = None
     self.enableDisplay()

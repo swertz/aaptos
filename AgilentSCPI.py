@@ -42,6 +42,7 @@ class AgilentSCPI(SerialConnection):
       errormessage = error.split(',')[1].lstrip()
       if errorcode==0: return errors
       errors.append((errorcode,errormessage))
+    return errors
 
   def version(self):
     """Returns a string in the form "YYYY.V" where the "Y's" represent the year of the 
@@ -60,7 +61,7 @@ class AgilentSCPI(SerialConnection):
     """This query performs a complete self-test of the power supply.
        Returns 0 if it passes, 1 if it fails.
        If the self-test fails, an error message is also generated with additional information on why the test failed."""
-    return self.question("*TST?")
+    return int(self.question("*TST?"))
    
   def setTriggerDelay(self, delay=0):
     """This command sets the time delay between the detection of an event on the specified 
@@ -70,7 +71,7 @@ class AgilentSCPI(SerialConnection):
 
   def getTriggerDelay(self):
     """This command queries the trigger delay"""
-    return self.question("TRIGGER:SEQUENCE:DELAY?")
+    return float(self.question("TRIGGER:SEQUENCE:DELAY?"))
 
   def setTriggerSource(self, source="BUS"):
     """This command selects the source from which the power supply will accept a trigger"""
@@ -122,7 +123,7 @@ class AgilentSCPI(SerialConnection):
 
   def state(self):
     """This command returns the current output state of the power supply"""
-    return self.question("OUTPUT:STATE?")
+    return int(self.question("OUTPUT:STATE?"))
 
   def save(self, index=1):
     """This command stores the present state of the power supply to the specified location in non-volatile memory"""

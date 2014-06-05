@@ -3,6 +3,16 @@ import AaptosDb
 import AaptosSOAP
 from threading import Thread
 
+#TODO make the main parameters options.
+# SOAP server & port
+# USB devices
+# DB parameters
+
+# once all that is settled, and debugged, consider:
+#  - making the hardware configurable
+#  - extend the CLI to device settings
+#  - implement missing features of the SCPI protocol
+
 class serverThread(Thread):
   def __init__(group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None)
     Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs, daemon=daemon)

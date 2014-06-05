@@ -209,10 +209,10 @@ class MyAaptosCliApp(npyscreen.NPSAppManaged):
           self.soapProxy = AaptosSOAP.SOAPProxy("http://localhost:8080/")
         # the forms
         self.addForm("MAIN", MainForm , name = "Welcome to Aaptos", minimum_lines=20, columns=108)
-        self.addFormClass("SETTINGSP6V",  SettingsForm, name = "P6V Settings" )
-        self.addFormClass("SETTINGSP25V", SettingsForm, name = "P25V Settings")
-        self.addFormClass("SETTINGSM25V", SettingsForm, name = "M25V Settings")
-        self.addFormClass("SETTINGSP20V", SettingsForm, name = "P20V Settings")
+        self.addFormClass("SETTINGSP6V",  SettingsForm, name = "P6V Settings" , minimum_lines=20, columns=108)
+        self.addFormClass("SETTINGSP25V", SettingsForm, name = "P25V Settings", minimum_lines=20, columns=108)
+        self.addFormClass("SETTINGSM25V", SettingsForm, name = "M25V Settings", minimum_lines=20, columns=108)
+        self.addFormClass("SETTINGSP20V", SettingsForm, name = "P20V Settings", minimum_lines=20, columns=108)
 
 
 class SettingsForm(npyscreen.ActionForm):
@@ -270,13 +270,16 @@ class SettingsForm(npyscreen.ActionForm):
        aaptos.configureInstrument(psunit,V=float(self.voltage.value), I=float(self.currentLimit.value))
      except socket.error as e:
        npyscreen.notify_wait("[Errno %s] %s"%(e.errno,e.strerror), title="Error", form_color='STANDOUT', wrap=True, wide=False)
+       self.editing = False
        self.parentApp.switchFormPrevious()
      except ValueError as e:
        npyscreen.notify_wait(e.message,title="Error", form_color='STANDOUT', wrap=True, wide=False)
      else:
+       self.editing = False
        self.parentApp.switchFormPrevious()
 
    def on_cancel(self):
+     self.editing = False
      self.parentApp.switchFormPrevious()
 
 
@@ -292,10 +295,10 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
        try:
          # update V,I for each PS
          values = aaptos.getStatus()
-         for key,value in values.iteritems():
+         for key,value in dict(values).iteritems():
            getattr(self,key).values=list(value)
          # on/off state
-         self.enablePower = aaptos.state()
+         self.enablePower.value = aaptos.isOn()
        except socket.error:
          self.setStatus(False)
        else:
@@ -379,7 +382,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         try:
           values = aaptos.getStatus()
         except socket.error as e:
-          values = { "P6V":[0,0], "P25V":[0,0], "M25V":[0,0], "M20V":[0,0] }
+          values = { "P6V":[0,0], "P25V":[0,0], "M25V":[0,0], "P20V":[0,0] }
           self.setStatus(False)
         else:
           self.setStatus(True)
@@ -391,7 +394,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.M25V = self.add(PowerBox, name="M25V", levels=self.getDefaultLevels("M25V"), 
                                        values=values["M25V"], width=50, height=4, rely=rely)
         self.P20V = self.add(PowerBox, name="P20V", levels=self.getDefaultLevels("P20V"), 
-                                       values=values["M20V"], width=50, height=4, rely=rely, relx=55)
+                                       values=values["P20V"], width=50, height=4, rely=rely, relx=55)
         self.nextrely += 2
 
         # options

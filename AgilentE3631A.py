@@ -1,6 +1,8 @@
 import serial
 from AgilentSCPI import AgilentSCPI
 from AgilentInstrument import AgilentInstrument
+#from DummySCPI import DummySCPI as AgilentSCPI
+#from DummyInstrument import DummyInstrument as AgilentInstrument
 
 class AgilentE3631A(AgilentSCPI):
   """Agilent E3631A Triple Output DC Power Supply"""
@@ -10,8 +12,8 @@ class AgilentE3631A(AgilentSCPI):
     self.setRemote()
     self.reset()
     assert "E3631A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3631A"
-    self.instruments_ = { "P6V":AgilentInstrument(1,"P6V",self), "P25V":AgilentInstrument(2,"P25V",self), "N25V":AgilentInstrument(3,"N25V",self) }
-    self.labels_ = { 1:"P6V", 2:"P25V", 3:"N25V" }
+    self.instruments_ = { "P6V":AgilentInstrument(1,"P6V",self), "P25V":AgilentInstrument(2,"P25V",self), "M25V":AgilentInstrument(3,"M25V",self) }
+    self.labels_ = { 1:"P6V", 2:"P25V", 3:"M25V" }
     self.currentInstrument_ = None
     self.enableDisplay()
     self.displayMessage("AAPTOS ONLINE...")

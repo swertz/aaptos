@@ -5,6 +5,9 @@ from threading import Thread
 from AgilentE3631A import AgilentE3631A
 from AgilentE3633A import AgilentE3633A
 
+SOAPpy.Config.simplify_objects=1
+
+
 class aaptos:
   def __init__(self):
     # For now, this is static. 
@@ -59,7 +62,7 @@ class aaptos:
     output = True
     for device in self.devices:
       output &= int(device.state())
-    return output()
+    return output
 
   def lock(self, yesno):
     for device in self.devices:
