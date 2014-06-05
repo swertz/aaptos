@@ -420,6 +420,21 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
                                      ("Set SOAP server",self.do_soapServer,"^S") ] )
         self.menu.addItemsFromList([ ("Quit",self.do_quit,"^Q") ] )
         #note: for now, settings = V,I for each instrument. More could be done with the devices themselves.
+
+        # The logo.
+        self.logo = self.add(npyscreen.MultiLineEdit, rely=self.nextrely-3, relx=75, value="""
+          WWWWWW
+        WW  W  W
+       WW  WW W
+      WW   WWW
+      W    W
+     WW   W W W
+     WW   WWWWW
+     WW     WW
+     WW    WW
+     WWWWWWW
+      WWWW
+                 """)
  
     def do_recall(self):
       F = ConfirmCancelPopup(name="Memory to load settings from:", color="STANDOUT")
