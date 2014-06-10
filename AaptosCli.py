@@ -2,7 +2,7 @@ from datetime import datetime
 import socket
 import npyscreen
 import AaptosSOAP
-import AaptosDb
+import AaptosSettings
         
 #####################################################
 ## Widgets - to be used: PowerBox
@@ -212,14 +212,18 @@ class MyAaptosCliApp(npyscreen.NPSAppManaged):
     def onStart(self):
         # the SOAP client
         if self.soapProxy is None:
-          self.soapProxy = AaptosSOAP.SOAPProxy("http://localhost:8080/")
+          self.soapProxy = AaptosSOAP.SOAPProxy("http://%s:%d/"%(AaptosSettings.SOAPServer,AaptosSettings.SOAPPort))
         # the forms
         self.addForm("MAIN", MainForm , name = "Welcome to Aaptos", minimum_lines=20, columns=108)
-        self.addFormClass("SETTINGSP6V",  SettingsForm, name = "P6V Settings" , minimum_lines=20, columns=108)
-        self.addFormClass("SETTINGSP25V", SettingsForm, name = "P25V Settings", minimum_lines=20, columns=108)
-        self.addFormClass("SETTINGSM25V", SettingsForm, name = "M25V Settings", minimum_lines=20, columns=108)
-        self.addFormClass("SETTINGSP20V", SettingsForm, name = "P20V Settings", minimum_lines=20, columns=108)
+        for instr in self.instruments():
+          self.addFormClass("SETTINGS%s"%instr, SettingsForm, name = "%s Settings"%instr, minimum_lines=20, columns=108)
 
+    def instruments(self):
+        # Fetch and cache the instruments. 
+        # Caching is made to enforce consistency.
+        if not hasattr(self,"instruments_"):
+          instruments_ = self.soapProxy.getStatus().keys()
+        return instruments_
 
 class SettingsForm(npyscreen.ActionForm):
 
@@ -310,7 +314,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
        if self.parentApp.loggerEnabled is not None:
          self.dblog.value = self.parentApp.loggerEnabled.isSet()
          self.lograte.update(clear=True)
-       self.lograte.value = AaptosDb.pooldelay
+       self.lograte.value = AaptosSettings.PoolDelay
 
     def while_waiting(self):
         self.update_clock()
@@ -342,7 +346,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           else:
             self.setStatus(True)
         elif widget.name=="Period":
-          AaptosDb.pooldelay = self.lograte.value
+          AaptosSettings.PoolDelay = self.lograte.value
 
     def getDefaultLevels(self,instrument):
         aaptos = self.parentApp.soapProxy
@@ -379,24 +383,24 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.nextrely += 1
 
         # name, voltage, current
-        rely = self.nextrely
         aaptos = self.parentApp.soapProxy
         try:
           values = aaptos.getStatus()
         except socket.error as e:
-          values = { "P6V":[0,0], "P25V":[0,0], "M25V":[0,0], "P20V":[0,0] }
+          values = { }
           self.setStatus(False)
         else:
           self.setStatus(True)
-        self.P6V  = self.add(PowerBox, name="P6V",  levels=self.getDefaultLevels("P6V"),  
-                                       values=values["P6V"], width=50, height=4, rely=rely)
-        self.P25V = self.add(PowerBox, name="P25V", levels=self.getDefaultLevels("P25V"), 
-                                       values=values["P25V"], width=50, height=4, rely=rely, relx=55)
         rely = self.nextrely
-        self.M25V = self.add(PowerBox, name="M25V", levels=self.getDefaultLevels("M25V"), 
-                                       values=values["M25V"], width=50, height=4, rely=rely)
-        self.P20V = self.add(PowerBox, name="P20V", levels=self.getDefaultLevels("P20V"), 
-                                       values=values["P20V"], width=50, height=4, rely=rely, relx=55)
+        relx = 3
+        for instr,vals in values.iteritems():
+          setattr(self,instr,self.add(PowerBox, name=instr, levels=self.getDefaultLevels(instr),
+                                                values=vals, width=50, height=4, relx=relx, rely=rely))
+          if relx==55:
+            relx = 3
+            rely = self.nextrely
+          else:
+            relx = 55
         self.nextrely += 2
 
         # options
@@ -407,7 +411,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.dblog.addVisibleWhenSelected(self.lograte)
         if self.parentApp.loggerEnabled is not None:
           self.dblog.value = self.parentApp.loggerEnabled.isSet()
-          self.lograte.value = AaptosDb.pooldelay
+          self.lograte.value = AaptosSettings.PoolDelay
           self.dblog.updateDependents()
         else:
           self.dblog.name = "Log values (Not available)"
@@ -421,13 +425,11 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.menu.addItemsFromList([ ("Recall",self.do_recall,"^R"),
                                      ("Save",self.do_save,"^S") ] )
         self.m1s1 = self.menu.addNewSubmenu("Settings", "^E")
-        self.m1s1.addItemsFromList([ ("P6V settings",  self.do_settings, None, None, ("P6V",)),
-                                     ("P25V settings", self.do_settings, None, None, ("P25V",)),
-                                     ("M25V settings", self.do_settings, None, None, ("M25V",)),
-                                     ("P20V settings", self.do_settings, None, None, ("P20V",)),
-                                     ("Set SOAP server",self.do_soapServer,"^S") ] )
-        self.menu.addItemsFromList([ ("Quit",self.do_quit,"^Q") ] )
-        #note: for now, settings = V,I for each instrument. More could be done with the devices themselves.
+        for instr in self.parentApp.instruments():
+          self.m1s1.addItem("%s settings"%instr, self.do_settings, None, None, (instr,))
+        self.m1s1.addItem("Set SOAP server",self.do_soapServer,"^S")
+        self.menu.addItem("Quit",self.do_quit,"^Q")
+        #TODO: for now, settings = V,I for each instrument. More could be done with the devices themselves.
 
         # The logo.
         self.logo = self.add(npyscreen.MultiLineEdit, rely=self.nextrely-3, relx=75, value="""

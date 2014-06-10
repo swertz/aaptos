@@ -1,8 +1,9 @@
 from storm.locals import *
 import time
 import AaptosSOAP
+import AaptosSettings
 
-def DbStore(login="aaptos", password="aaptos", database="localhost/aaptos"):
+def DbStore(login=AaptosSettings.DbLogin, password=AaptosSettings.DbPassword, database=AaptosSettings.Database):
   """create a database object and returns the db store from STORM"""
   database = create_database("mysql://"+login+":"+password+"@"+database)
   return Store(database)
@@ -20,11 +21,9 @@ class supplyReadings(Storm):
     result = "%s: V=%3.2f I=%3.2f at %s" % (str(self.instrument), self.voltage, self.current, str(self.reading_time))
     return result
 
-pooldelay=1
-
 def main():
   """AAPTOS SOAP client for db logging of readings"""
-  aaptos =  AaptosSOAP.SOAPProxy("http://localhost:8080/")
+  aaptos = AaptosSOAP.SOAPProxy("http://%s:%d/"%(AaptosSettings.SOAPServer,AaptosSettings.SOAPPort))
   dbstore = DbStore()
   print "AAPTOS SOAP client for db logging started"
   while True:
@@ -36,7 +35,7 @@ def main():
       readings.current = values[1]
       dbstore.add(readings)
     dbstore.commit()
-    time.sleep(pooldelay)
+    time.sleep(AaptosSettings.PoolDelay)
       
   #aaptos.recall(1)
   #aaptos.turnOn()
