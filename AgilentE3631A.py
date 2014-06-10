@@ -1,8 +1,14 @@
 import serial
-from AgilentSCPI import AgilentSCPI
-from AgilentInstrument import AgilentInstrument
-#from DummySCPI import DummySCPI as AgilentSCPI
-#from DummyInstrument import DummyInstrument as AgilentInstrument
+
+AaptosDummyMode = True
+ 
+if AaptosDummyMode:
+  from DummySCPI import DummySCPI as AgilentSCPI
+  from DummyInstrument import DummyInstrument as AgilentInstrument
+else:
+  from AgilentSCPI import AgilentSCPI
+  from AgilentInstrument import AgilentInstrument
+
 
 class AgilentE3631A(AgilentSCPI):
   """Agilent E3631A Triple Output DC Power Supply"""

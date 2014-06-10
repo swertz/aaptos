@@ -1,6 +1,6 @@
 from storm.locals import *
-import AaptosSOAP
 import time
+import AaptosSOAP
 
 def DbStore(login="aaptos", password="aaptos", database="localhost/aaptos"):
   """create a database object and returns the db store from STORM"""

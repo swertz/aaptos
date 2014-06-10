@@ -1,7 +1,8 @@
 import time
+from threading import Thread, Event
 import AaptosDb
 import AaptosSOAP
-from threading import Thread
+import AaptosCli
 
 #TODO make the main parameters options.
 # SOAP server & port
@@ -14,19 +15,21 @@ from threading import Thread
 #  - implement missing features of the SCPI protocol
 
 class serverThread(Thread):
-  def __init__(group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None)
-    Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs, daemon=daemon)
+  def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, daemon=False):
+    Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs)
+    self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
   def run(self):
     server = AaptosSOAP.SOAPServer(("localhost", 8080))
-    server.registerObject(aaptos())
+    server.registerObject(AaptosSOAP.aaptos())
     print "AAPTOS SOAP server started."
     self.serverRunning.set()
-    server.serve_forever() #TODO: start this in a (sub)thread so that it can be shutdown with server.shutdown()
+    server.serve_forever()
 
 class loggerThread(Thread):
-  def __init__(group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None)
-    Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs, daemon=daemon)
+  def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, daemon=False):
+    Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs)
+    self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
     self.enabled = kwargs["loggerEnabled"]
   def run(self):
@@ -47,20 +50,22 @@ class loggerThread(Thread):
       time.sleep(AaptosDb.pooldelay)
 
 class cliThread(Thread):
-  def __init__(group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None)
-    Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs, daemon=daemon)
+  def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, daemon=False):
+    Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs)
+    self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
     self.loggerEnabled = kwargs["loggerEnabled"]
   def run(self):
     self.serverRunning.wait()
     aaptos =  AaptosSOAP.SOAPProxy("http://localhost:8080/")
-    cli_app = MyAaptosCliApp(soapProxy=aaptos,loggerEnabled=self.loggerEnabled)
+    cli_app = AaptosCli.MyAaptosCliApp(soapProxy=aaptos,loggerEnabled=self.loggerEnabled)
     cli_app.run()
 
 def main():
 
-  serverRunning = threading.Event()
-  loggerEnabled = threading.Event()
+  serverRunning = Event()
+  loggerEnabled = Event()
+  AaptosDb.pooldelay = 10
   loggerEnabled.set()
   
   serverThread(name="SOAPServer",daemon=True, kwargs = {"serverRunning":serverRunning}).start()

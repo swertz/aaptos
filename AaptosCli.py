@@ -1,10 +1,8 @@
+from datetime import datetime
+import socket
 import npyscreen
 import AaptosSOAP
-from datetime import datetime
-import threading
-import time
-import types
-import socket
+import AaptosDb
         
 #####################################################
 ## Widgets - to be used: PowerBox
@@ -182,6 +180,14 @@ class activeCheckBox(npyscreen.RoundCheckBox):
   def when_value_edited(self):
     self.parent.reactToChange(self)
 
+class activeFormControlCheckbox(npyscreen.FormControlCheckbox):
+  def when_value_edited(self):
+    self.parent.reactToChange(self)
+
+class activeTitleSlider(npyscreen.TitleSlider):
+  def when_value_edited(self):
+    self.parent.reactToChange(self)
+
 class ConfirmCancelPopup(npyscreen.ActionPopup):
     def on_ok(self):
         self.value = True
@@ -237,10 +243,6 @@ class SettingsForm(npyscreen.ActionForm):
        curMax = aaptos.invoke("%s.getMaxCurrentLimit"%psunit,[])
        voltMin = aaptos.invoke("%s.getMinVoltage"%psunit,[])
        voltMax = aaptos.invoke("%s.getMaxVoltage"%psunit,[])
-       #curMin = getattr(aaptos,"%s.getMinCurrentLimit"%psunit)()
-       #curMax = getattr(aaptos,"%s.getMaxCurrentLimit"%psunit)()
-       #voltMin = getattr(aaptos,"%s.getMinVoltage"%psunit)()
-       #voltMax = getattr(aaptos,"%s.getMaxVoltage"%psunit)()
      except socket.error:
        curMin = levels[1][0]
        curMax = levels[1][3]
@@ -307,6 +309,8 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
        # logger status
        if self.parentApp.loggerEnabled is not None:
          self.dblog.value = self.parentApp.loggerEnabled.isSet()
+         self.lograte.update(clear=True)
+       self.lograte.value = AaptosDb.pooldelay
 
     def while_waiting(self):
         self.update_clock()
@@ -337,6 +341,8 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
             self.setStatus(False)
           else:
             self.setStatus(True)
+        elif widget.name=="Period":
+          AaptosDb.pooldelay = self.lograte.value
 
     def getDefaultLevels(self,instrument):
         aaptos = self.parentApp.soapProxy
@@ -345,10 +351,6 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           curMax = aaptos.invoke("%s.getMaxCurrentLimit"%instrument,[])
           voltMin = aaptos.invoke("%s.getMinVoltage"%instrument,[])
           voltMax = aaptos.invoke("%s.getMaxVoltage"%instrument,[])
-          #curMin = getattr(aaptos,"%s.getMinCurrentLimit"%instrument)()
-          #curMax = getattr(aaptos,"%s.getMaxCurrentLimit"%instrument)()
-          #voltMin = getattr(aaptos,"%s.getMinVoltage"%instrument)()
-          #voltMax = getattr(aaptos,"%s.getMaxVoltage"%instrument)()
         except socket.error:
           curMin = 0.
           curMax = 1.
@@ -398,15 +400,21 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.nextrely += 2
 
         # options
-        self.enablePower = self.add(activeCheckBox, value=False, name="Enabled")
-        self.remoteLock  = self.add(activeCheckBox, value=False, name="Lock front panel")
-        self.dblog       = self.add(activeCheckBox, value=False, name="Log values", color = "NO_EDIT")
+        self.enablePower = self.add(activeCheckBox, value=False, name="Enabled", width=50)
+        self.remoteLock  = self.add(activeCheckBox, value=False, name="Lock front panel", width=50)
+        self.dblog       = self.add(activeFormControlCheckbox, value=False, name="Log values", color = "NO_EDIT", width=50)
+        self.lograte     = self.add(activeTitleSlider, width=50, relx=5, lowest=1, out_of=60, name="Period")
+        self.dblog.addVisibleWhenSelected(self.lograte)
         if self.parentApp.loggerEnabled is not None:
           self.dblog.value = self.parentApp.loggerEnabled.isSet()
+          self.lograte.value = AaptosDb.pooldelay
+          self.dblog.updateDependents()
         else:
           self.dblog.name = "Log values (Not available)"
           self.dblog.color = "NO_EDIT"
           self.dblog.editable=False
+          self.dblog.value = False
+          self.dblog.updateDependents()
 
         # The menus are created here.
         self.menu = self.add_menu(name="File", shortcut="^F")
@@ -434,7 +442,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
      WW    WW
      WWWWWWW
       WWWW
-                 """)
+                 """, editable=False )
  
     def do_recall(self):
       F = ConfirmCancelPopup(name="Memory to load settings from:", color="STANDOUT")

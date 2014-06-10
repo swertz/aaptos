@@ -1,7 +1,4 @@
 import SOAPpy
-import time
-import AaptosDb
-from threading import Thread
 from AgilentE3631A import AgilentE3631A
 from AgilentE3633A import AgilentE3633A
 
