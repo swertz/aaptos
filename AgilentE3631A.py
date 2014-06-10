@@ -66,7 +66,7 @@ class AgilentE3631A(AgilentSCPI):
 
   def readSettings(self,instrument):
     """This command queries the power supply's present voltage and current values for each output and returns a quoted string"""
-    return self.question("APPLY? "+instrument)
+    return map(float,self.question("APPLY? "+instrument).split(","))
 
   def couple(self,instrumentList=[]):
     """This command defines a coupling between various logical outputs of the power supply"""
