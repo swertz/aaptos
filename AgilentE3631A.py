@@ -1,6 +1,6 @@
 import serial
 
-AaptosDummyMode = True
+AaptosDummyMode = False
  
 if AaptosDummyMode:
   from DummySCPI import DummySCPI as AgilentSCPI
@@ -18,11 +18,11 @@ class AgilentE3631A(AgilentSCPI):
     self.setRemote()
     self.reset()
     assert "E3631A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3631A"
-    self.instruments_ = { "P6V":AgilentInstrument(1,"P6V",self), "P25V":AgilentInstrument(2,"P25V",self), "M25V":AgilentInstrument(3,"M25V",self) }
-    self.labels_ = { 1:"P6V", 2:"P25V", 3:"M25V" }
+    self.instruments_ = { "P6V":AgilentInstrument(1,"P6V",self), "P25V":AgilentInstrument(2,"P25V",self), "N25V":AgilentInstrument(3,"N25V",self) }
+    self.labels_ = { 1:"P6V", 2:"P25V", 3:"N25V" }
     self.currentInstrument_ = None
     self.enableDisplay()
-    self.displayMessage("AAPTOS ONLINE...")
+    self.displayMessage("AAPTOS READY")
     self.beep()
     self.selectInstrument(index=1)
 
@@ -66,7 +66,7 @@ class AgilentE3631A(AgilentSCPI):
 
   def readSettings(self,instrument):
     """This command queries the power supply's present voltage and current values for each output and returns a quoted string"""
-    return map(float,self.question("APPLY? "+instrument).split(","))
+    return map(float,self.question("APPLY? "+instrument)[1:-1].split(","))
 
   def couple(self,instrumentList=[]):
     """This command defines a coupling between various logical outputs of the power supply"""

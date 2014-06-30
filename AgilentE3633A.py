@@ -1,6 +1,6 @@
 import serial
 
-AaptosDummyMode = True
+AaptosDummyMode = False
 
 if AaptosDummyMode:
   from DummySCPI import DummySCPI as AgilentSCPI
@@ -22,7 +22,7 @@ class AgilentE3633A(AgilentSCPI):
     self.labels_ = { 0:"P20V" }
     self.currentInstrument_ = None
     self.enableDisplay()
-    self.displayMessage("AAPTOS ONLINE...")
+    self.displayMessage("AAPTOS READY")
     self.beep()
     self.selectInstrument(index=0)
 
@@ -63,7 +63,7 @@ class AgilentE3633A(AgilentSCPI):
 
   def readSettings(self,instrument):
     """This command queries the power supply's present voltage and current values for each output and returns a quoted string"""
-    return map(float,self.question("APPLY? "+instrument).split(","))
+    return map(float,self.question("APPLY? "+instrument)[1:-1].split(","))
 
   def couple(self,instrumentList=[]):
     """This command defines a coupling between various logical outputs of the power supply"""

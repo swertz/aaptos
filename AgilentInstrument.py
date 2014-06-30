@@ -44,11 +44,11 @@ class AgilentInstrument(SerialConnection):
 
   def getMeasuredCurrent(self):
     """This command queries the current measured at the output terminals of the power supply"""
-    return self.question("MEASURE:CURRENT? " + self.label_)
+    return float(self.question("MEASURE:CURRENT? " + self.label_))
 
   def getMeasuredVoltage(self):
     """This command queries the voltage measured at the output terminals of the power supply"""
-    return self.question("MEASURE:VOLTAGE? " + self.label_)
+    return float(self.question("MEASURE:VOLTAGE? " + self.label_))
 
   def setCurrentLimit(self, current, triggered=False):
     """This command directly programs the current level of the power supply"""
@@ -62,25 +62,25 @@ class AgilentInstrument(SerialConnection):
     """This query returns the presently programmed current limit level of the selected output"""
     self.makeCurrent()
     if triggered:
-      return self.question("SOURCE:CURRENT:LEVEL:TRIGGERED:AMPLITUDE?")
+      return float(self.question("SOURCE:CURRENT:LEVEL:TRIGGERED:AMPLITUDE?"))
     else:
-      return self.question("SOURCE:CURRENT:LEVEL:IMMEDIATE:AMPLITUDE?")
+      return float(self.question("SOURCE:CURRENT:LEVEL:IMMEDIATE:AMPLITUDE?"))
 
   def getMinCurrentLimit(self, triggered=False):
     """This query returns the minimum programmable current limit level of the selected output"""
     self.makeCurrent()
     if triggered:
-      return self.question("SOURCE:CURRENT:LEVEL:TRIGGERED:AMPLITUDE? MIN")
+      return float(self.question("SOURCE:CURRENT:LEVEL:TRIGGERED:AMPLITUDE? MIN"))
     else:
-      return self.question("SOURCE:CURRENT:LEVEL:IMMEDIATE:AMPLITUDE? MIN")
+      return float(self.question("SOURCE:CURRENT:LEVEL:IMMEDIATE:AMPLITUDE? MIN"))
 
   def getMaxCurrentLimit(self, triggered=False):
     """This query returns the maximum programmable current limit level of the selected output"""
     self.makeCurrent()
     if triggered:
-      return self.question("SOURCE:CURRENT:LEVEL:TRIGGERED:AMPLITUDE? MAX")
+      return float(self.question("SOURCE:CURRENT:LEVEL:TRIGGERED:AMPLITUDE? MAX"))
     else:
-      return self.question("SOURCE:CURRENT:LEVEL:IMMEDIATE:AMPLITUDE? MAX")
+      return float(self.question("SOURCE:CURRENT:LEVEL:IMMEDIATE:AMPLITUDE? MAX"))
 
   def setVoltage(self, voltage, triggered=False):
     """This command directly programs the voltage level of the power supply"""
@@ -94,24 +94,24 @@ class AgilentInstrument(SerialConnection):
     """This query returns the presently programmed voltage limit level of the selected output"""
     self.makeCurrent()
     if triggered:
-      return self.question("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE?")
+      return float(self.question("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE?"))
     else:
-      return self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE?")
+      return float(self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE?"))
 
   def getMinVoltage(self, triggered=False):
     """This query returns the minimum programmable voltage limit level of the selected output"""
     self.makeCurrent()
     if triggered:
-      return self.question("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE? MIN")
+      return float(self.question("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE? MIN"))
     else:
-      return self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE? MIN")
+      return float(self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE? MIN"))
 
   def getMaxVoltage(self, triggered=False):
     """This query returns the minimum programmable voltage limit level of the selected output"""
     self.makeCurrent()
     if triggered:
-      return self.question("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE? MAX")
+      return float(self.question("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE? MAX"))
     else:
-      return self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE? MAX")
+      return float(self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE? MAX"))
 
   #TODO: calibration commands or procedure

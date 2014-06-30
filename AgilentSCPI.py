@@ -1,5 +1,6 @@
 import serial
 from SerialConnection import SerialConnection
+from time import sleep
 
 class AgilentSCPI(SerialConnection):
   """Generic SCPI interface to Agilent power supplies. The SCPI commands below are handled.
@@ -55,7 +56,9 @@ class AgilentSCPI(SerialConnection):
 
   def reset(self):
     """This command resets the power supply to its power-on state and clear status registers"""
-    return self.write("*RST; *CLS")
+    res = self.write("*RST; *CLS")
+    sleep(1)
+    return res
 
   def selfTest(self):
     """This query performs a complete self-test of the power supply.
@@ -99,11 +102,11 @@ class AgilentSCPI(SerialConnection):
 
   def getDisplayState(self):
     """This command queries the front-panel display setting. Returns "0" (OFF) or "1" (ON)"""
-    return self.question("DISPLAY:STATE?")
+    return int(self.question("DISPLAY:STATE?"))
 
   def displayMessage(self,message):
     """This command displays a message on the front panel"""
-    self.write("DISPLAY:WINDOW:TEXT:DATA "+str(message))
+    self.write('DISPLAY:WINDOW:TEXT:DATA "%s"'%str(message))
 
   def getDisplayMessage(self):
     """This command queries the message sent to the front panel and returns a quoted string"""

@@ -351,10 +351,10 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
     def getDefaultLevels(self,instrument):
         aaptos = self.parentApp.soapProxy
         try:
-          curMin = aaptos.invoke("%s.getMinCurrentLimit"%instrument,[])
-          curMax = aaptos.invoke("%s.getMaxCurrentLimit"%instrument,[])
-          voltMin = aaptos.invoke("%s.getMinVoltage"%instrument,[])
-          voltMax = aaptos.invoke("%s.getMaxVoltage"%instrument,[])
+          curMin = float(aaptos.invoke("%s.getMinCurrentLimit"%instrument,[]))
+          curMax = float(aaptos.invoke("%s.getMaxCurrentLimit"%instrument,[]))
+          voltMin = float(aaptos.invoke("%s.getMinVoltage"%instrument,[]))
+          voltMax = abs(float(aaptos.invoke("%s.getMaxVoltage"%instrument,[]))) #TODO: solve this: must know to set neg values
         except socket.error:
           curMin = 0.
           curMax = 1.
@@ -404,6 +404,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.nextrely += 2
 
         # options
+#TODO: add option to clear display message
         self.enablePower = self.add(activeCheckBox, value=False, name="Enabled", width=50)
         self.remoteLock  = self.add(activeCheckBox, value=False, name="Lock front panel", width=50)
         self.dblog       = self.add(activeFormControlCheckbox, value=False, name="Log values", color = "NO_EDIT", width=50)
@@ -421,6 +422,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           self.dblog.updateDependents()
 
         # The menus are created here.
+#TODO: bug in settings: sets wrong device !
         self.menu = self.add_menu(name="File", shortcut="^F")
         self.menu.addItemsFromList([ ("Recall",self.do_recall,"^R"),
                                      ("Save",self.do_save,"^S") ] )
@@ -455,6 +457,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
       F.edit()
       if F.value:
         try:
+          aaptos = self.parentApp.soapProxy
           aaptos.recall(mlw.value[0]+1)
         except socket.error as e:
           npyscreen.notify_wait("[Errno %s] %s"%(e.errno,e.strerror), title="Error", form_color='STANDOUT', wrap=True, wide=False)
@@ -468,6 +471,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
       F.edit()
       if F.value:
         try:
+          aaptos = self.parentApp.soapProxy
           aaptos.save(mlw.value[0]+1)
         except socket.error as e:
           npyscreen.notify_wait("[Errno %s] %s"%(e.errno,e.strerror), title="Error", form_color='STANDOUT', wrap=True, wide=False)

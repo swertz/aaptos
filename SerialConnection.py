@@ -12,12 +12,15 @@ class SerialConnection:
 
   def readline(self):
     """Read one line from the device"""
-    return self.serial.readLine()
+    return self.serial.readline()[:-2]
 
-  def question(self, data):
+  def question(self, data, cnt=0):
     """Send one query to the device and returns the answer"""
+    if cnt>2: raise Exception("Too many empty responses to query: "%data)
     self.write(data)
-    return self.readline()
+    res = self.readline()
+    if res is "" : return self.question(data,cnt+1)
+    return res
 
   def open(self):
     """Open the connection"""

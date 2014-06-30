@@ -47,10 +47,12 @@ class aaptos:
   def turnOn(self):
     for device in self.devices.values():
       device.enable()
+      device.displayMessage("AAPTOS ON")
 
   def turnOff(self):
     for device in self.devices.values():
       device.disable()
+      device.displayMessage("AAPTOS OFF")
 
   def isOn(self):
     output = True
@@ -77,7 +79,7 @@ def main():
   #server.registerObject(aaptos_instance.E3633A, namespace="E3633A")
   #server.registerObject(aaptos_instance.P6V, namespace="P6V")
   #server.registerObject(aaptos_instance.P25V, namespace="P25V")
-  #server.registerObject(aaptos_instance.M25V, namespace="M25V")
+  #server.registerObject(aaptos_instance.N25V, namespace="N25V")
   #server.registerObject(aaptos_instance.P20V, namespace="P20V")
   server.serve_forever()
 
