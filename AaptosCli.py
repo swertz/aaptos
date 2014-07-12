@@ -3,6 +3,8 @@ import socket
 import npyscreen
 import AaptosSOAP
 import AaptosSettings
+import logging
+logging.basicConfig(filename='AaptosCli.log',level=logging.DEBUG)
         
 #####################################################
 ## Widgets - to be used: PowerBox
@@ -230,6 +232,7 @@ class SettingsForm(npyscreen.ActionForm):
    def create(self):
      aaptos = self.parentApp.soapProxy
      psunit = self.name.split()[0]
+     logging.debug('creating SettingsForm with name %s => psunit = %s'%(self.name,psunit))
      try:
        (V,I) = aaptos.getInstrumentConfiguration(psunit)
      except socket.error:
@@ -264,6 +267,7 @@ class SettingsForm(npyscreen.ActionForm):
 
    def on_ok(self):
      psunit = self.name.split()[0]
+     logging.debug('about to save settings to psunit = %s'%psunit)
      # set the warning/danger levels
      volt_tmp = self.voltageWarning.get_levels()
      curr_tmp = self.currentWarning.get_levels()
@@ -316,9 +320,18 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
          self.lograte.update(clear=True)
        self.lograte.value = AaptosSettings.PoolDelay
 
+    def check_errors(self):
+       aaptos = self.parentApp.soapProxy
+       for device,errors in aaptos.getErrors().iteritems():
+         errorMessages = map(lambda error: "[Errno %s] %s"%(error[0],error[1]), errors)
+         if len(errorMessages):
+            message = "\n".join(errorMessages)
+            npyscreen.notify_confirm(message, title="Error on device %s"%device, editw=1)
+
     def while_waiting(self):
-        self.update_clock()
-        self.update_fields()
+       self.update_clock()
+       self.update_fields()
+       self.check_errors()
 
     def reactToChange(self, widget):
         aaptos = self.parentApp.soapProxy
@@ -332,8 +345,10 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           try:
             if self.enablePower.value:
               aaptos.turnOn()
+              self.hideDisplay.value = False
             else:
               aaptos.turnOff()
+              self.hideDisplay.value = False
           except socket.error:
             self.setStatus(False)
           else:
@@ -347,6 +362,20 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
             self.setStatus(True)
         elif widget.name=="Period":
           AaptosSettings.PoolDelay = self.lograte.value
+        elif widget.name=="Hide device displays":
+          try:
+            devices = aaptos.getDevices()
+            for dev in devices: 
+              if not self.hideDisplay.value:
+                aaptos.invoke("%s.clearDisplayMessage"%dev,[])
+              elif self.enablePower.value:
+                aaptos.invoke("%s.displayMessage"%dev,["AAPTOS ON"])
+              else:
+                aaptos.invoke("%s.displayMessage"%dev,["AAPTOS OFF"]) #TODO check
+          except socket.error:
+            self.setStatus(False)
+          else:
+            self.setStatus(True)
 
     def getDefaultLevels(self,instrument):
         aaptos = self.parentApp.soapProxy
@@ -404,9 +433,9 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.nextrely += 2
 
         # options
-#TODO: add option to clear display message
         self.enablePower = self.add(activeCheckBox, value=False, name="Enabled", width=50)
         self.remoteLock  = self.add(activeCheckBox, value=False, name="Lock front panel", width=50)
+        self.hideDisplay = self.add(activeCheckBox, value=True, name="Hide device displays", width=50)
         self.dblog       = self.add(activeFormControlCheckbox, value=False, name="Log values", color = "NO_EDIT", width=50)
         self.lograte     = self.add(activeTitleSlider, width=50, relx=5, lowest=1, out_of=60, name="Period")
         self.dblog.addVisibleWhenSelected(self.lograte)
@@ -422,7 +451,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           self.dblog.updateDependents()
 
         # The menus are created here.
-#TODO: bug in settings: sets wrong device !
+#TODO: bug in settings: sets wrong device ! -> see with debug statements
         self.menu = self.add_menu(name="File", shortcut="^F")
         self.menu.addItemsFromList([ ("Recall",self.do_recall,"^R"),
                                      ("Save",self.do_save,"^S") ] )
@@ -477,6 +506,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           npyscreen.notify_wait("[Errno %s] %s"%(e.errno,e.strerror), title="Error", form_color='STANDOUT', wrap=True, wide=False)
 
     def do_settings(self, psunit):
+      logging.debug('do_settings for psunit = %s'%psunit)
       self.parentApp.switchForm('SETTINGS'+psunit)
       
     def do_soapServer(self):

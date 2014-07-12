@@ -52,6 +52,7 @@ class AgilentE3631A(AgilentSCPI):
     return currentInstrument
 
   def setRemote(self, locked=False):
+    self.setLocal() # needed to eventually unlock 
     if(locked):
       self.write("SYSTEM:RWLOCK")
     else:

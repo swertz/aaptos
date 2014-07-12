@@ -23,10 +23,13 @@ class aaptos:
         self.instruments["%s_%s"%(devname,label)] = getattr(self,"%s_%s"%(devname,label))
     
   def getStatus(self):
-    result = {}
-    for label,i in self.instruments.iteritems():
-      result[label] = (i.getMeasuredVoltage(), i.getMeasuredCurrent())
-    return result
+    return { label:(i.getMeasuredVoltage(), i.getMeasuredCurrent()) for label,i in self.instruments.iteritems() }
+
+  def getErrors(self):
+    return { label, device.getErrors() for label, device in self.devices.iteritems() }
+
+  def getDevices(self):
+    return self.devices.keys()
 
   def configureInstrument(self,instrument,V,I, triggered=False):
     getattr(self,instrument).setVoltage(V, triggered)

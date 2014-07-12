@@ -49,6 +49,7 @@ class AgilentE3633A(AgilentSCPI):
     return self.labels_[0]
 
   def setRemote(self, locked=False):
+    self.setLocal() # needed to eventually unlock 
     if(locked):
       self.write("SYSTEM:RWLOCK")
     else:
