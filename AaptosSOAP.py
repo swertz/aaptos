@@ -21,12 +21,14 @@ class aaptos:
       for label,inst in dev.instruments_.iteritems():
         setattr(self,"%s_%s"%(devname,label),inst)
         self.instruments["%s_%s"%(devname,label)] = getattr(self,"%s_%s"%(devname,label))
+    # debug
+    print 'max v for P6V:',self.E3631A_P6V.getMaxVoltage()
     
   def getStatus(self):
     return { label:(i.getMeasuredVoltage(), i.getMeasuredCurrent()) for label,i in self.instruments.iteritems() }
 
   def getErrors(self):
-    return { label, device.getErrors() for label, device in self.devices.iteritems() }
+    return { label:device.getErrors() for label, device in self.devices.iteritems() }
 
   def getDevices(self):
     return self.devices.keys()
@@ -76,6 +78,8 @@ def main():
   # Start the server
   server = SOAPServer((AaptosSettings.SOAPServer, AaptosSettings.SOAPPort))
   server.registerObject(aaptos())
+  server.config.dumpSOAPIn = 1
+  server.config.dumpSOAPOut = 1
   #aaptos_instance = aaptos()
   #server.registerObject(aaptos_instance, namespace="aaptos")
   #server.registerObject(aaptos_instance.E3631A, namespace="E3631A")

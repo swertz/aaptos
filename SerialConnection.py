@@ -16,6 +16,7 @@ class SerialConnection:
 
   def question(self, data, cnt=0):
     """Send one query to the device and returns the answer"""
+    print data
     if cnt>2: raise Exception("Too many empty responses to query: "%data)
     self.write(data)
     res = self.readline()

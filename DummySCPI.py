@@ -57,7 +57,7 @@ class DummySCPI:
   def getDisplayMessage(self):
     return self.message
 
-  def clearDisplayMessage(self):
+  def clearDisplayMessage(self,dummy=None):
     self.message = ""
 
   def enable(self):

@@ -1,4 +1,6 @@
 from datetime import datetime
+from threading import Thread
+from time import sleep
 import socket
 import npyscreen
 import AaptosSOAP
@@ -13,6 +15,7 @@ logging.basicConfig(filename='AaptosCli.log',level=logging.DEBUG)
 class GaugeWidget(npyscreen.Slider):
     """A slider with custom label"""
     def __init__(self, screen, *args, **keywords):
+      self.negativeValue = False
       super(GaugeWidget, self).__init__(screen, *args, **keywords)
       self.levels = (0,50,100, 100.1)
       self.unit = "a.u."
@@ -22,14 +25,17 @@ class GaugeWidget(npyscreen.Slider):
         self.unit = keywords['unit']
 
     def translate_value(self):
-      stri = "%6.3f %s" % (self.value, self.unit)
+      if self.negativeValue:
+         stri = "-%6.3f %s" % (self.value, self.unit)
+      else:
+         stri = "%6.3f %s" % (self.value, self.unit)
       return stri
 
     def set_levels(self,levels):
-      self.lowest = levels[0]
-      self.warning = levels[1]
-      self.maximum = levels[2]
-      self.out_of = levels[3]
+      self.lowest = abs(levels[0])
+      self.warning = abs(levels[1])
+      self.maximum = abs(levels[2])
+      self.out_of = abs(levels[3])
       #self.step   = self.out_of/10.
       if self.__value < self.levels[1] :
           self.color = "SAFE"
@@ -39,7 +45,7 @@ class GaugeWidget(npyscreen.Slider):
           self.color = "DANGER"
 
     def get_levels(self):
-      return (self.lowest, self.warning, self.maximum, self.out_of)
+        return (self.lowest, self.warning, self.maximum, self.out_of)
 
     levels = property(get_levels, set_levels)
 
@@ -47,22 +53,23 @@ class GaugeWidget(npyscreen.Slider):
         #"We can only represent ints or floats, and must be less than what we are out of..."
         if val is None: val = 0
         if not isinstance(val, int) and not isinstance(val, float):
-            raise ValueError
+            raise TypeError("GaugeWidget value must be int or float")
 
         else:
-            self.__value = val
+            self.__value = abs(val)
 
-        if self.__value > self.out_of: raise ValueError
+        if self.__value > self.out_of: raise ValueError("GaugeWidget value out of bound: %f > %f"%(self.__value,self.out_of))
         if hasattr(self, 'levels'):
-          if val < self.levels[1] :
+          if abs(val) < self.levels[1] :
             self.color = "SAFE"
-          elif val < self.levels[2]:
+          elif abs(val) < self.levels[2]:
             self.color = "WARNING"
           else:
             self.color = "DANGER"
+        self.negativeValue = (val<0)
 
     def get_value(self):
-        return float(self.__value)
+          return float(self.__value)
 
     value = property(get_value, set_value)
 
@@ -237,6 +244,7 @@ class SettingsForm(npyscreen.ActionForm):
        (V,I) = aaptos.getInstrumentConfiguration(psunit)
      except socket.error:
        (V,I) = (0,0) # no error... it will anyway come if we try to save
+     logging.debug('instrument configuration: V:%d I:%d'%(V,I))
      self.voltage      = self.add(npyscreen.TitleText, name  = "Voltage (V):", value = str(V))
      self.currentLimit = self.add(npyscreen.TitleText, name  = "Current (A):", value = str(I))
      self.nextrely += 2
@@ -245,16 +253,19 @@ class SettingsForm(npyscreen.ActionForm):
      #min and max are fixed by the hardware, warning and danger are just for display
 
      levels = getattr(self.parentApp.getForm("MAIN"),psunit).get_levels()
+     logging.debug('levels: %s'%str(levels))
      try:
        curMin = aaptos.invoke("%s.getMinCurrentLimit"%psunit,[])
        curMax = aaptos.invoke("%s.getMaxCurrentLimit"%psunit,[])
        voltMin = aaptos.invoke("%s.getMinVoltage"%psunit,[])
        voltMax = aaptos.invoke("%s.getMaxVoltage"%psunit,[])
+       logging.debug('got levels from device: %s'%str((voltMin,voltMax,curMin,curMax)))
      except socket.error:
        curMin = levels[1][0]
        curMax = levels[1][3]
        voltMin= levels[0][0]
        voltMax= levels[0][3]
+       logging.debug('got exception while retrieving levels')
 
      self.voltageWarning = self.add(TitleGauge, name = "Voltage Warning Level", unit="V", step=0.1, 
                                                 levels=(voltMin,voltMin,voltMax,voltMax), value=levels[0][1])
@@ -300,11 +311,24 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
        self.date_widget.value = datetime.now().strftime("%b %d %Y %H:%M:%S")
        self.display()
 
+    def update_values(self):  #TODO: is that thread-safe?
+       aaptos = self.parentApp.soapProxy
+       while(1):
+         try:
+           # update V,I for each PS
+           self.values = aaptos.getStatus()
+         except socket.error:
+           self.setStatus(False)
+         else:
+           self.setStatus(True)
+         sleep(10)
+
     def update_fields(self):
        aaptos = self.parentApp.soapProxy
        try:
          # update V,I for each PS
-         values = aaptos.getStatus()
+         values = aaptos.getStatus()   #TODO: this is "very" slow and should run in the background. update_fields should just pick the last readings
+         #values = self.values
          for key,value in dict(values).iteritems():
            getattr(self,key).values=list(value)
          # on/off state
@@ -322,12 +346,17 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
 
     def check_errors(self):
        aaptos = self.parentApp.soapProxy
-       for device,errors in aaptos.getErrors().iteritems():
-         errorMessages = map(lambda error: "[Errno %s] %s"%(error[0],error[1]), errors)
-         if len(errorMessages):
-            message = "\n".join(errorMessages)
-            npyscreen.notify_confirm(message, title="Error on device %s"%device, editw=1)
-
+       try:
+         for device,errors in aaptos.getErrors().iteritems():
+           errorMessages = map(lambda error: "[Errno %s] %s"%(error[0],error[1]), errors)
+           if len(errorMessages):
+              message = "\n".join(errorMessages)
+              npyscreen.notify_confirm(message, title="Error on device %s"%device, editw=1)
+       except socket.error:
+         self.setStatus(False)
+       else:
+         self.setStatus(True)
+       
     def while_waiting(self):
        self.update_clock()
        self.update_fields()
@@ -345,10 +374,10 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           try:
             if self.enablePower.value:
               aaptos.turnOn()
-              self.hideDisplay.value = False
+              self.hideDisplay.value = True
             else:
               aaptos.turnOff()
-              self.hideDisplay.value = False
+              self.hideDisplay.value = True
           except socket.error:
             self.setStatus(False)
           else:
@@ -367,11 +396,11 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
             devices = aaptos.getDevices()
             for dev in devices: 
               if not self.hideDisplay.value:
-                aaptos.invoke("%s.clearDisplayMessage"%dev,[])
+                aaptos.invoke("%s.clearDisplayMessage"%dev,None)
               elif self.enablePower.value:
-                aaptos.invoke("%s.displayMessage"%dev,["AAPTOS ON"])
+                aaptos.invoke("%s.displayMessage"%dev,"AAPTOS ON")
               else:
-                aaptos.invoke("%s.displayMessage"%dev,["AAPTOS OFF"]) #TODO check
+                aaptos.invoke("%s.displayMessage"%dev,"AAPTOS OFF")
           except socket.error:
             self.setStatus(False)
           else:
@@ -383,7 +412,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           curMin = float(aaptos.invoke("%s.getMinCurrentLimit"%instrument,[]))
           curMax = float(aaptos.invoke("%s.getMaxCurrentLimit"%instrument,[]))
           voltMin = float(aaptos.invoke("%s.getMinVoltage"%instrument,[]))
-          voltMax = abs(float(aaptos.invoke("%s.getMaxVoltage"%instrument,[]))) #TODO: solve this: must know to set neg values
+          voltMax = float(aaptos.invoke("%s.getMaxVoltage"%instrument,[]))
         except socket.error:
           curMin = 0.
           curMax = 1.
@@ -412,6 +441,11 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.nextrely += 1
 
         # name, voltage, current
+        #self.values = None
+        #t = Thread(target=self.update_values) #TODO: is this correct?
+        #t.setDaemon(True)
+        #t.start()
+        logging.debug("setting initial gauges")
         aaptos = self.parentApp.soapProxy
         try:
           values = aaptos.getStatus()
@@ -420,6 +454,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           self.setStatus(False)
         else:
           self.setStatus(True)
+        logging.debug("status: %s"%str(values))
         rely = self.nextrely
         relx = 3
         for instr,vals in values.iteritems():
@@ -433,6 +468,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.nextrely += 2
 
         # options
+        logging.debug("setting options")
         self.enablePower = self.add(activeCheckBox, value=False, name="Enabled", width=50)
         self.remoteLock  = self.add(activeCheckBox, value=False, name="Lock front panel", width=50)
         self.hideDisplay = self.add(activeCheckBox, value=True, name="Hide device displays", width=50)
@@ -451,7 +487,6 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
           self.dblog.updateDependents()
 
         # The menus are created here.
-#TODO: bug in settings: sets wrong device ! -> see with debug statements
         self.menu = self.add_menu(name="File", shortcut="^F")
         self.menu.addItemsFromList([ ("Recall",self.do_recall,"^R"),
                                      ("Save",self.do_save,"^S") ] )
@@ -529,3 +564,4 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
 if __name__ == '__main__':
     TA = MyAaptosCliApp()
     TA.run()
+

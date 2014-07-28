@@ -28,8 +28,7 @@ class AgilentE3633A(AgilentSCPI):
 
   def selectInstrument(self, label=None, index=None):
     """This command selects the output to be programmed among three outputs"""
-    self.currentInstrument_ = self.getInstrument(label,index)
-    self.currentInstrument_.makeCurrent()
+    self.getInstrument(label,index).makeCurrent()
     return self.currentInstrument_
 
   def getCurrentInstrument(self):

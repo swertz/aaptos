@@ -112,7 +112,7 @@ class AgilentSCPI(SerialConnection):
     """This command queries the message sent to the front panel and returns a quoted string"""
     return self.question("DISPLAY:WINDOW:TEXT:DATA?")
 
-  def clearDisplayMessage(self):
+  def clearDisplayMessage(self, dummy=None):
     """This command clears the message displayed on the front panel"""
     self.write("DISPLAY:WINDOW:TEXT:CLEAR")
 

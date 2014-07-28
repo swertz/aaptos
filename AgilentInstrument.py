@@ -1,4 +1,5 @@
 from SerialConnection import SerialConnection
+from time import sleep
 
 class AgilentInstrument(SerialConnection):
   """Generic SCPI interface to Agilent power supply instruments. The SCPI commands below are handled.
@@ -20,10 +21,10 @@ class AgilentInstrument(SerialConnection):
   def __init__(self, index=0, label="", connection=None):
     self.index_ = index
     self.label_ = label
-    self.isCurrent_ = (index==0)
     if not isinstance(connection,SerialConnection):
       raise TypeError("Error: AgilentInstrument must be instantiated from an existing SerialConnection")
     self.serial = connection.serial
+    self.connection = connection
 
   def label(self):
     return self.label_
@@ -35,12 +36,13 @@ class AgilentInstrument(SerialConnection):
     raise copy.error("AgilentInstrument cannot be copied")
 
   def isCurrent(self):
-    return self.isCurrent_
+    return self.connection.getCurrentInstrument() is self
 
   def makeCurrent(self):
     if not self.isCurrent():
       self.write("INSTRUMENT:NSELECT "+str(self.index_))
-      self.isCurrent_ = True
+      sleep(0.2)
+    self.connection.currentInstrument_ = self
 
   def getMeasuredCurrent(self):
     """This command queries the current measured at the output terminals of the power supply"""
@@ -54,9 +56,9 @@ class AgilentInstrument(SerialConnection):
     """This command directly programs the current level of the power supply"""
     self.makeCurrent()
     if triggered:
-      self.write("SOURCE:CURRENT:LEVEL:TRIGGERED:AMPLITUDE "+str(current))
+      self.write("SOURCE:CURRENT:LEVEL:TRIGGERED:AMPLITUDE "+str(abs(current)))
     else:
-      self.write("SOURCE:CURRENT:LEVEL:IMMEDIATE:AMPLITUDE "+str(current))
+      self.write("SOURCE:CURRENT:LEVEL:IMMEDIATE:AMPLITUDE "+str(abs(current)))
 
   def getCurrentLimit(self, triggered=False):
     """This query returns the presently programmed current limit level of the selected output"""
@@ -86,9 +88,9 @@ class AgilentInstrument(SerialConnection):
     """This command directly programs the voltage level of the power supply"""
     self.makeCurrent()
     if triggered:
-      self.write("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE "+str(voltage))
+      self.write("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE "+str(abs(voltage)))
     else:
-      self.write("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE "+str(voltage))
+      self.write("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE "+str(abs(voltage)))
 
   def getVoltage(self, triggered=False):
     """This query returns the presently programmed voltage limit level of the selected output"""
@@ -109,6 +111,7 @@ class AgilentInstrument(SerialConnection):
   def getMaxVoltage(self, triggered=False):
     """This query returns the minimum programmable voltage limit level of the selected output"""
     self.makeCurrent()
+    print 'Max voltage for %s is %d'%(self.label(),float(self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE? MAX")))
     if triggered:
       return float(self.question("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE? MAX"))
     else:
