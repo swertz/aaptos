@@ -3,8 +3,6 @@ from datetime import datetime,timedelta
 import AaptosSOAP
 import AaptosSettings
 import numpy as np
-#import matplotlib
-#matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -23,8 +21,8 @@ def main():
     voltages[device] = plt.plot_date(mytime, [values[0]], fmt="b-")[0]
     plt.subplot(len(status),2,(index*2)+2) # current
     currents[device] = plt.plot_date(mytime, [values[1]], fmt="b-")[0]
+  # formating
   fig.autofmt_xdate()
-  plt.draw()
   for index,(device,values) in enumerate(status.iteritems()):
     ax = plt.subplot(len(status),2,(index*2)+1) # voltage
     ax.fmt_xdata = mdates.DateFormatter('%H:%M:%S')
@@ -34,6 +32,7 @@ def main():
     ax.fmt_xdata = mdates.DateFormatter('%H:%M:%S')
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
     plt.title('%s current'%device)
+  fig.subplots_adjust(left=0.075, bottom=0.10, right=0.95, top=0.95, wspace=0.175, hspace=0.30)
 
   while True:
     status = aaptos.getStatus()
@@ -47,9 +46,12 @@ def main():
       t = np.append(t,now)
       v = np.append(v,values[0])
       c = np.append(c,values[1])
+      if len(t)>60: #TODO: this should be a cfg on the command line
+        t = np.delete(t,0)
+        v = np.delete(v,0)
+        c = np.delete(c,0)
       voltagePlot.set_data(t,v)
       currentPlot.set_data(t,c)
-      #TODO: put a max length and start to drop old readings. -> like a queue: use (t,v,c).popleft()
       # update view
       ax = plt.subplot(len(status),2,index*2+1) # voltage
       plt.ylim((np.amin(v),np.amax(v)))
@@ -62,3 +64,5 @@ def main():
       
 if __name__ == '__main__':
     main()
+
+#TODO: add an option to read from db
