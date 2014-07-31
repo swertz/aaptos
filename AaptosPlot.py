@@ -3,9 +3,8 @@ from datetime import datetime,timedelta
 import AaptosSOAP
 import AaptosSettings
 import numpy as np
-from PyQt4.QtGui import QApplication
-import matplotlib
-matplotlib.use('Qt4Agg')
+#import matplotlib
+#matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -59,8 +58,7 @@ def main():
       plt.ylim((np.amin(c),np.amax(c)))
       plt.xlim((np.amin(t),np.amax(t)))
     plt.draw()
-    QApplication.processEvents()
-    time.sleep(AaptosSettings.PoolDelay)
+    plt.pause(AaptosSettings.PoolDelay)
       
 if __name__ == '__main__':
     main()
