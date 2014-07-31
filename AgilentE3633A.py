@@ -20,7 +20,6 @@ class AgilentE3633A(AgilentSCPI):
     assert "E3633A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3633A"
     self.instruments_ = { "P20V":AgilentInstrument(0,"P20V",self) }
     self.labels_ = { 0:"P20V" }
-    self.currentInstrument_ = None
     self.enableDisplay()
     self.displayMessage("AAPTOS READY")
     self.beep()
@@ -29,11 +28,10 @@ class AgilentE3633A(AgilentSCPI):
   def selectInstrument(self, label=None, index=None):
     """This command selects the output to be programmed among three outputs"""
     self.getInstrument(label,index).makeCurrent()
-    return self.currentInstrument_
 
   def getCurrentInstrument(self):
     """Returns the current instrument"""
-    return self.currentInstrument_
+    return self.instruments_[self.getSelected()]
 
   def getInstrument(self, label=None, index=None):
     if label in self.instruments_:

@@ -37,11 +37,5 @@ def main():
     dbstore.commit()
     time.sleep(AaptosSettings.PoolDelay)
       
-  #aaptos.recall(1)
-  #aaptos.turnOn()
-  ##more advanced queries
-  #print aaptos.P6V.getMaxVoltage()
-  #aaptos.E3631A.disableDisplay()
-
 if __name__ == '__main__':
     main()

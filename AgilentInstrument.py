@@ -111,7 +111,6 @@ class AgilentInstrument(SerialConnection):
   def getMaxVoltage(self, triggered=False):
     """This query returns the minimum programmable voltage limit level of the selected output"""
     self.makeCurrent()
-    print 'Max voltage for %s is %d'%(self.label(),float(self.question("SOURCE:VOLTAGE:LEVEL:IMMEDIATE:AMPLITUDE? MAX")))
     if triggered:
       return float(self.question("SOURCE:VOLTAGE:LEVEL:TRIGGERED:AMPLITUDE? MAX"))
     else:

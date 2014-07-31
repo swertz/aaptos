@@ -20,7 +20,6 @@ class AgilentE3631A(AgilentSCPI):
     assert "E3631A" in self.identity(), "Error: improper device: "+self.identity()+"\n Expecting E3631A"
     self.instruments_ = { "P6V":AgilentInstrument(1,"P6V",self), "P25V":AgilentInstrument(2,"P25V",self), "N25V":AgilentInstrument(3,"N25V",self) }
     self.labels_ = { 1:"P6V", 2:"P25V", 3:"N25V" }
-    self.currentInstrument_ = None
     self.enableDisplay()
     self.displayMessage("AAPTOS READY")
     self.beep()
@@ -29,11 +28,10 @@ class AgilentE3631A(AgilentSCPI):
   def selectInstrument(self, label=None, index=None):
     """This command selects the output to be programmed among three outputs"""
     self.getInstrument(label,index).makeCurrent()
-    return self.currentInstrument_
 
   def getCurrentInstrument(self):
     """Returns the current instrument"""
-    return self.currentInstrument_
+    return self.instruments_[self.getSelected()]
 
   def getInstrument(self, label=None, index=None):
     if label in self.instruments_:
@@ -47,7 +45,6 @@ class AgilentE3631A(AgilentSCPI):
     """This query returns the currently selected output by the INSTrument"""
     currentInstrument = self.question("INSTRUMENT:SELECT?")
     assert currentInstrument in self.instruments_, "Error: unknown current instrument"
-    assert self.instruments_[currentInstrument].isCurrent(), "Error: current instrument mismatch"
     return currentInstrument
 
   def setRemote(self, locked=False):
