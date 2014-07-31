@@ -1,12 +1,12 @@
-import time
 from datetime import datetime,timedelta
-import AaptosSOAP
-import AaptosSettings
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import AaptosDb
+import AaptosSOAP
+import AaptosSettings
 
-def main():
+def main_live():
   """AAPTOS SOAP client for plotting of readings"""
   plt.ion()
   aaptos = AaptosSOAP.SOAPProxy("http://%s:%d/"%(AaptosSettings.SOAPServer,AaptosSettings.SOAPPort))
@@ -61,8 +61,43 @@ def main():
       plt.xlim((np.amin(t),np.amax(t)))
     plt.draw()
     plt.pause(AaptosSettings.PoolDelay)
-      
+
+def main_db():
+  dbstore = AaptosDb.DbStore()
+  timerange = (datetime(2014, 7, 30, 14, 30, 00),datetime(2014, 7, 30, 16, 30, 00)) # TODO: from cfg
+  # get readings and create plots
+  readings = dbstore.find(AaptosDb.supplyReadings, AaptosDb.supplyReadings.reading_time>timerange[0], AaptosDb.supplyReadings.reading_time<timerange[1] ) 
+  devices = set([ reading.instrument for reading in readings ])
+  fig = plt.figure(1)
+  voltages = {}
+  currents = {}
+  for index,device in enumerate(devices):
+    devicereadings = readings.find(AaptosDb.supplyReadings.instrument==device)
+    v = [ reading.voltage for reading in devicereadings ]
+    c = [ reading.current for reading in devicereadings ]
+    t = [ reading.reading_time for reading in devicereadings ]
+    plt.subplot(len(devices),2,(index*2)+1) # voltage
+    voltages[device] = plt.plot_date(t, v, fmt="b-")[0]
+    plt.subplot(len(devices),2,(index*2)+2) # current
+    currents[device] = plt.plot_date(t, c, fmt="b-")[0]
+  # formating
+  fig.autofmt_xdate()
+  for index,device in enumerate(devices):
+    ax = plt.subplot(len(devices),2,(index*2)+1) # voltage
+    ax.fmt_xdata = mdates.DateFormatter('%Y-%m-%d %H:%M:%S')
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
+    plt.title('%s voltage'%device)
+    ax = plt.subplot(len(devices),2,(index*2)+2) # current
+    ax.fmt_xdata = mdates.DateFormatter('%Y-%m-%d %H:%M:%S')
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
+    plt.title('%s current'%device)
+  fig.subplots_adjust(left=0.075, bottom=0.10, right=0.95, top=0.95, wspace=0.175, hspace=0.30)
+  plt.show()
+
+def main(): #TODO: add a switch as a cfg (command line)
+  #main_live()
+  main_db()
+
 if __name__ == '__main__':
     main()
 
-#TODO: add an option to read from db
