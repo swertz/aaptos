@@ -33,7 +33,7 @@ def main_live():
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
     plt.title('%s current'%device)
   fig.subplots_adjust(left=0.075, bottom=0.10, right=0.95, top=0.95, wspace=0.175, hspace=0.30)
-
+  # iterate and update live plots
   while True:
     status = aaptos.getStatus()
     now = mdates.date2num(datetime.now())
@@ -69,17 +69,15 @@ def main_db():
   readings = dbstore.find(AaptosDb.supplyReadings, AaptosDb.supplyReadings.reading_time>timerange[0], AaptosDb.supplyReadings.reading_time<timerange[1] ) 
   devices = set([ reading.instrument for reading in readings ])
   fig = plt.figure(1)
-  voltages = {}
-  currents = {}
   for index,device in enumerate(devices):
     devicereadings = readings.find(AaptosDb.supplyReadings.instrument==device)
     v = [ reading.voltage for reading in devicereadings ]
     c = [ reading.current for reading in devicereadings ]
     t = [ reading.reading_time for reading in devicereadings ]
     plt.subplot(len(devices),2,(index*2)+1) # voltage
-    voltages[device] = plt.plot_date(t, v, fmt="b-")[0]
+    plt.plot_date(t, v, fmt="b-")[0]
     plt.subplot(len(devices),2,(index*2)+2) # current
-    currents[device] = plt.plot_date(t, c, fmt="b-")[0]
+    plt.plot_date(t, c, fmt="b-")[0]
   # formating
   fig.autofmt_xdate()
   for index,device in enumerate(devices):
