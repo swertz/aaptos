@@ -1,10 +1,30 @@
+import re
 import SOAPpy
 import AaptosSettings
+from AgilentSCPI import AgilentSCPI
 from AgilentE3631A import AgilentE3631A
 from AgilentE3633A import AgilentE3633A
 
 SOAPpy.Config.simplify_objects=1
 
+def AgilentFactory(port):
+  device = AgilentSCPI(port)
+  identity = device.identity()
+  device.close()
+  if "E3631A" in identity:
+    return AgilentE3631A
+  elif "E3633A" in identity:
+    return AgilentE3633A
+  else:
+    raise RuntimeError("Unknown device: %s"%identity)
+
+def increment(label):
+  p = re.compile('(.+)_(\d+)$')
+  if p.match(label) is None:
+    return label+"_1"
+  else:
+    m = p.findall(label)
+    return "%s_%d"%(m[0][0],int(m[0][1])+1)
 
 class aaptos:
   def __init__(self):
@@ -15,6 +35,12 @@ class aaptos:
       class_ = getattr(module, dev[1])
       setattr(self,dev[0],class_(port=dev[2]))
       self.devices[dev[0]] = getattr(self,dev[0])
+    for port in AaptosSettings.AutoDevices:
+      class_ = AgilentFactory(port)
+      label = AaptosSettings.autoNaming(port,class_.__name__)
+      if hasattr(self,label): increment(label)
+      setattr(self,label,class_(port))
+      self.devices[label] = getattr(self,label)
     # instruments
     self.instruments = {}
     for devname,dev in self.devices.iteritems():
