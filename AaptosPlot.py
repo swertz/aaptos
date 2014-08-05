@@ -56,10 +56,10 @@ def main_live(bufferDepth, pollingTime):
       currentPlot.set_data(t,c)
       # update view
       ax = plt.subplot(len(status),2,index*2+1) # voltage
-      plt.ylim((np.amin(v),np.amax(v)))
+      plt.ylim((np.amin(v)-0.1*abs(np.amin(v)-np.amax(v)),np.amax(v)+0.1*abs(np.amin(v)-np.amax(v))))
       plt.xlim((np.amin(t),np.amax(t)))
       ax = plt.subplot(len(status),2,index*2+2) # current
-      plt.ylim((np.amin(c),np.amax(c)))
+      plt.ylim((np.amin(c)-0.1*abs(np.amin(c)-np.amax(c)),np.amax(c)+0.1*abs(np.amin(c)-np.amax(c))))
       plt.xlim((np.amin(t),np.amax(t)))
     plt.draw()
     plt.pause(pollingTime)
