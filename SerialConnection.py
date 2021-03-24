@@ -24,11 +24,14 @@ class SerialConnection:
 
     def write(self, data):
         """Send one command to the device"""
-        self.serial.write(data + "\n")
+        data = bytes(data + "\n", "ascii")
+        self.serial.write(data)
 
     def readline(self):
         """Read one line from the device"""
-        return self.serial.readline()[:-2]
+        ret = self.serial.readline()[:-2]
+        ret = ret.decode("ascii")
+        return ret
 
     def question(self, data, cnt=0):
         """Send one query to the device and returns the answer"""
