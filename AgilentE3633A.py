@@ -1,4 +1,5 @@
 import serial
+from functools import reduce
 
 AaptosDummyMode = False
 
@@ -61,7 +62,7 @@ class AgilentE3633A(AgilentSCPI):
 
   def readSettings(self,instrument):
     """This command queries the power supply's present voltage and current values for each output and returns a quoted string"""
-    return map(float,self.question("APPLY? "+instrument)[1:-1].split(","))
+    return list(map(float,self.question("APPLY? "+instrument)[1:-1].split(",")))
 
   def couple(self,instrumentList=[]):
     """This command defines a coupling between various logical outputs of the power supply"""

@@ -17,7 +17,7 @@ def main_live(bufferDepth, pollingTime):
   fig = plt.figure(1)
   voltages = {}
   currents = {}
-  for index,(device,values) in enumerate(status.iteritems()):
+  for index,(device,values) in enumerate(status.items()):
     mytime = mdates.date2num([ datetime.now() ])
     plt.subplot(len(status),2,(index*2)+1) # voltage
     voltages[device] = plt.plot_date(mytime, [values[0]], fmt="b-")[0]
@@ -25,7 +25,7 @@ def main_live(bufferDepth, pollingTime):
     currents[device] = plt.plot_date(mytime, [values[1]], fmt="b-")[0]
   # formating
   fig.autofmt_xdate()
-  for index,(device,values) in enumerate(status.iteritems()):
+  for index,(device,values) in enumerate(status.items()):
     ax = plt.subplot(len(status),2,(index*2)+1) # voltage
     ax.fmt_xdata = mdates.DateFormatter('%H:%M:%S')
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
@@ -39,7 +39,7 @@ def main_live(bufferDepth, pollingTime):
   while True:
     status = aaptos.getStatus()
     now = mdates.date2num(datetime.now())
-    for index,(device,values) in enumerate(status.iteritems()):
+    for index,(device,values) in enumerate(status.items()):
       # update graphs
       voltagePlot = voltages[device]
       currentPlot = currents[device]

@@ -231,7 +231,7 @@ class MyAaptosCliApp(npyscreen.NPSAppManaged):
         # Fetch and cache the instruments. 
         # Caching is made to enforce consistency.
         if not hasattr(self,"instruments_"):
-          instruments_ = self.soapProxy.getStatus().keys()
+          instruments_ = list(self.soapProxy.getStatus().keys())
         return instruments_
 
 class SettingsForm(npyscreen.ActionForm):
@@ -329,7 +329,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
          # update V,I for each PS
          values = aaptos.getStatus()   #TODO: this is "very" slow and should run in the background. update_fields should just pick the last readings
          #values = self.values
-         for key,value in dict(values).iteritems():
+         for key,value in dict(values).items():
            getattr(self,key).values=list(value)
          # on/off state
          self.enablePower.value = aaptos.isOn()
@@ -347,8 +347,8 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
     def check_errors(self):
        aaptos = self.parentApp.soapProxy
        try:
-         for device,errors in aaptos.getErrors().iteritems():
-           errorMessages = map(lambda error: "[Errno %s] %s"%(error[0],error[1]), errors)
+         for device,errors in aaptos.getErrors().items():
+           errorMessages = ["[Errno %s] %s"%(error[0],error[1]) for error in errors]
            if len(errorMessages):
               message = "\n".join(errorMessages)
               npyscreen.notify_confirm(message, title="Error on device %s"%device, editw=1)
@@ -457,7 +457,7 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         logging.debug("status: %s"%str(values))
         rely = self.nextrely
         relx = 3
-        for instr,vals in values.iteritems():
+        for instr,vals in values.items():
           setattr(self,instr,self.add(PowerBox, name=instr, levels=self.getDefaultLevels(instr),
                                                 values=vals, width=50, height=4, relx=relx, rely=rely))
           if relx==55:

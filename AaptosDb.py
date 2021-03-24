@@ -25,12 +25,12 @@ def main():
   """AAPTOS SOAP client for db logging of readings"""
   aaptos = AaptosSOAP.SOAPProxy("http://%s:%d/"%(AaptosSettings.SOAPServer,AaptosSettings.SOAPPort))
   dbstore = DbStore()
-  print "AAPTOS SOAP client for db logging started"
+  print("AAPTOS SOAP client for db logging started")
   while True:
     status = aaptos.getStatus()
-    for device,values in status.iteritems():
+    for device,values in status.items():
       readings = supplyReadings()
-      readings.instrument = unicode(device)
+      readings.instrument = str(device)
       readings.voltage = values[0]
       readings.current = values[1]
       dbstore.add(readings)

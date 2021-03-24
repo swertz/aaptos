@@ -18,7 +18,7 @@ class serverThread(Thread):
   def run(self):
     server = AaptosSOAP.SOAPServer((AaptosSettings.SOAPServer, AaptosSettings.SOAPPort))
     server.registerObject(AaptosSOAP.aaptos())
-    print "AAPTOS SOAP server started."
+    print("AAPTOS SOAP server started.")
     self.serverRunning.set()
     server.serve_forever()
 
@@ -32,13 +32,13 @@ class loggerThread(Thread):
     self.serverRunning.wait()
     aaptos = AaptosSOAP.SOAPProxy("http://%s:%d/"%(AaptosSettings.SOAPServer,AaptosSettings.SOAPPort))
     dbstore = AaptosDb.DbStore()
-    print "AAPTOS SOAP client for db logging started"
+    print("AAPTOS SOAP client for db logging started")
     while True:
       self.enabled.wait()
       status = aaptos.getStatus()
-      for device,values in status.iteritems():
+      for device,values in status.items():
         readings = AaptosDb.supplyReadings()
-        readings.instrument = unicode(device)
+        readings.instrument = str(device)
         readings.voltage = values[0]
         readings.current = values[1]
         dbstore.add(readings)
@@ -122,7 +122,7 @@ It can be started either as a deamon, or interactively, with or without db and c
         s.run()
       except KeyboardInterrupt:
         pass
-    print "\nAAPTOS SOAP server stopped."
+    print("\nAAPTOS SOAP server stopped.")
 
 if __name__ == '__main__':
   main()

@@ -43,19 +43,19 @@ class aaptos:
       self.devices[label] = getattr(self,label)
     # instruments
     self.instruments = {}
-    for devname,dev in self.devices.iteritems():
-      for label,inst in dev.instruments_.iteritems():
+    for devname,dev in self.devices.items():
+      for label,inst in dev.instruments_.items():
         setattr(self,"%s_%s"%(devname,label),inst)
         self.instruments["%s_%s"%(devname,label)] = getattr(self,"%s_%s"%(devname,label))
     
   def getStatus(self):
-    return { label:(i.getMeasuredVoltage(), i.getMeasuredCurrent()) for label,i in self.instruments.iteritems() }
+    return { label:(i.getMeasuredVoltage(), i.getMeasuredCurrent()) for label,i in self.instruments.items() }
 
   def getErrors(self):
-    return { label:device.getErrors() for label, device in self.devices.iteritems() }
+    return { label:device.getErrors() for label, device in self.devices.items() }
 
   def getDevices(self):
-    return self.devices.keys()
+    return list(self.devices.keys())
 
   def configureInstrument(self,instrument,V,I, triggered=False):
     getattr(self,instrument).setVoltage(V, triggered)
@@ -66,31 +66,31 @@ class aaptos:
     return (instr.getVoltage(triggered), instr.getCurrentLimit(triggered))
     
   def recall(self, memory):
-    for device in self.devices.values():
+    for device in list(self.devices.values()):
       device.recall(memory)
 
   def save(self,memory):
-    for device in self.devices.values():
+    for device in list(self.devices.values()):
       device.save(memory)
   
   def turnOn(self):
-    for device in self.devices.values():
+    for device in list(self.devices.values()):
       device.enable()
       device.displayMessage("AAPTOS ON")
 
   def turnOff(self):
-    for device in self.devices.values():
+    for device in list(self.devices.values()):
       device.disable()
       device.displayMessage("AAPTOS OFF")
 
   def isOn(self):
     output = True
-    for device in self.devices.values():
+    for device in list(self.devices.values()):
       output &= int(device.state())
     return output
 
   def lock(self, yesno):
-    for device in self.devices.values():
+    for device in list(self.devices.values()):
       device.setRemote(locked=yesno) 
 
 class SOAPServer(SOAPpy.SOAPServer): pass
