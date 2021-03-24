@@ -7,7 +7,7 @@ Devices = []
 #Devices = [ ("E3631A","AgilentE3631A","/dev/ttyUSB1"),
 #            ("E3633A","AgilentE3633A","/dev/ttyUSB0") ]
 
-AutoDevices = [ "/dev/ttyUSB1", "/dev/ttyUSB0" ]
+AutoDevices = [ "/dev/ttyUSB0" ]#, "/dev/ttyUSB0" ]
 
 def autoNaming(port, device):
   # defines the device name.
