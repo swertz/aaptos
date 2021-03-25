@@ -64,17 +64,19 @@ class cliThread(Thread):
     cli_app.run()
 
 class AaptosDaemon(Daemon):
-  def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null', withDb=False):
+  def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null', withDb=False, SOAPServer=None, SOAPPort=None):
     Daemon.__init__(self,pidfile,stdin,stdout,stderr)
     self.withDb = withDb
+    self.SOAPServer = SOAPServer
+    self.SOAPPort = SOAPPort
 
   def run(self):
     serverRunning = Event()
     loggerEnabled = Event()
     loggerEnabled.set()
-    serverThread(name="SOAPServer",daemon=False, kwargs = {"serverRunning":serverRunning}).start()
+    serverThread(name="SOAPServer", daemon=False, SOAPServer=self.SOAPServer, SOAPPort=self.SOAPPort, kwargs = {"serverRunning":serverRunning}).start()
     if self.withDb:
-      loggerThread(name="DBLogger",daemon=True, kwargs = {"serverRunning":serverRunning, "loggerEnabled":loggerEnabled}).start()
+      loggerThread(name="DBLogger",daemon=True, SOAPServer=self.SOAPServer, SOAPPort=self.SOAPPort, kwargs = {"serverRunning":serverRunning, "loggerEnabled":loggerEnabled}).start()
 
 def main():
   # pidfile
@@ -84,7 +86,7 @@ def main():
   description="""The Aaptos daemon.
 It can be started either as a deamon, or interactively, with or without db and cli components."""
   parser = ArgumentParser(usage=usage, description=description)
-  parser.add_argument("command", choices=["start", "stop", "restart"],
+  parser.add_argument("command", nargs='?', choices=["start", "stop", "restart"],
                       help="Daemon command")
   parser.add_argument("-D", "--daemon", action="store_true", default=False,
                       help="start as a daemon. Requires additional start/stop/restart argument.")
