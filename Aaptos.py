@@ -114,7 +114,7 @@ It can be started either as a deamon, or interactively, with or without db and c
   # start Aaptos
   if args.daemon:
     # daemon mode
-    daemon = AaptosDaemon(pidfile, withDb=args.withDb)
+    daemon = AaptosDaemon(pidfile, withDb=args.withDb, SOAPServer=args.server, SOAPPort=args.port)
     getattr(daemon,mode)()
   else:
     # non-deamon mode
