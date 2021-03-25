@@ -11,26 +11,30 @@ import AaptosCli
 import AaptosSettings
 
 class serverThread(Thread):
-  def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, daemon=False):
+  def __init__(self, group=None, target=None, name=None, SOAPServer=None, SOAPPort=None, args=(), kwargs={}, daemon=False):
     Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs)
     self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
+    self.SOAPServer = SOAPServer if SOAPServer else AaptosSettings.SOAPServer
+    self.SOAPPort = SOAPPort if SOAPPort else AaptosSettings.SOAPPort
   def run(self):
-    server = AaptosSOAP.SOAPServer((AaptosSettings.SOAPServer, AaptosSettings.SOAPPort))
+    server = AaptosSOAP.SOAPServer((self.SOAPServer, self.SOAPPort))
     server.registerObject(AaptosSOAP.aaptos())
     print "AAPTOS SOAP server started."
     self.serverRunning.set()
     server.serve_forever()
 
 class loggerThread(Thread):
-  def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, daemon=False):
+  def __init__(self, group=None, target=None, name=None, SOAPServer=None, SOAPPort=None, args=(), kwargs={}, daemon=False):
     Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs)
     self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
     self.enabled = kwargs["loggerEnabled"]
+    self.SOAPServer = SOAPServer if SOAPServer else AaptosSettings.SOAPServer
+    self.SOAPPort = SOAPPort if SOAPPort else AaptosSettings.SOAPPort
   def run(self):
     self.serverRunning.wait()
-    aaptos = AaptosSOAP.SOAPProxy("http://%s:%d/"%(AaptosSettings.SOAPServer,AaptosSettings.SOAPPort))
+    aaptos = AaptosSOAP.SOAPProxy("http://%s:%d/"%(self.SOAPServer, self.SOAPPort))
     dbstore = AaptosDb.DbStore()
     print "AAPTOS SOAP client for db logging started"
     while True:
@@ -46,14 +50,16 @@ class loggerThread(Thread):
       time.sleep(AaptosSettings.PoolDelay)
 
 class cliThread(Thread):
-  def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, daemon=False):
+  def __init__(self, group=None, target=None, name=None, SOAPServer=None, SOAPPort=None, args=(), kwargs={}, daemon=False):
     Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs)
     self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
     self.loggerEnabled = kwargs["loggerEnabled"]
+    self.SOAPServer = SOAPServer if SOAPServer else AaptosSettings.SOAPServer
+    self.SOAPPort = SOAPPort if SOAPPort else AaptosSettings.SOAPPort
   def run(self):
     self.serverRunning.wait()
-    aaptos =  AaptosSOAP.SOAPProxy("http://%s:%d/"%(AaptosSettings.SOAPServer,AaptosSettings.SOAPPort))
+    aaptos =  AaptosSOAP.SOAPProxy("http://%s:%d/"%(self.SOAPServer, self.SOAPPort))
     cli_app = AaptosCli.MyAaptosCliApp(soapProxy=aaptos,loggerEnabled=self.loggerEnabled)
     cli_app.run()
 
@@ -77,30 +83,36 @@ def main():
   usage="""%prog [options] [start|stop|restart]"""
   description="""The Aaptos daemon.
 It can be started either as a deamon, or interactively, with or without db and cli components."""
-  parser = OptionParser(usage=usage,add_help_option=True,description=description)
-  parser.add_option("-D", "--daemon", action="store_true", dest="daemon", default=False,
-                    help="start as a daemon. Requires additional start/stop/restart argument.")
-  parser.add_option("-c", "--cli", action="store_true", dest="withCli", default=False,
-                    help="also start the client.")
-  parser.add_option("-l", "--log", action="store_true", dest="withDb", default=False,
-                    help="also start the database logger.")
-  (options, args) = parser.parse_args()
-  if options.daemon:
-    if not args or args[-1] not in ["start","stop","restart"]:
+  parser = ArgumentParser(usage=usage,add_help_option=True,description=description)
+  parser.add_argument("command", choices=["start", "stop", "restart"],
+                      help="Daemon command")
+  parser.add_argument("-D", "--daemon", action="store_true", default=False,
+                      help="start as a daemon. Requires additional start/stop/restart argument.")
+  parser.add_argument("-c", "--cli", action="store_true", dest="withCli", default=False,
+                      help="also start the client.")
+  parser.add_argument("-l", "--log", action="store_true", dest="withDb", default=False,
+                      help="also start the database logger.")
+  parser.add_argument("-s", "--server", default="localhost",
+                      help="IP address of machine running the Aaptos SOAP server (default is localhost")
+  parser.add_argument("-p", "--port", type=int, default=8080,
+                      help="Port of Aaptos SOAP server (default is 8080")
+  args = parser.parse_args()
+  if args.daemon:
+    if not args.command:
       parser.error("Daemon mode requires an additional start/stop/restart argument.")
     else:
-      mode = args[-1]
+      mode = args.command
   else:
-    if args and args[-1] in ["start","stop","restart"]:
-      parser.error("%s is intended for daemon mode. Use together with --daemon"%args[-1])
-  if options.withCli:
-    if options.daemon:
+    if args.command:
+      parser.error("%s is intended for daemon mode. Use together with --daemon"%args.command)
+  if args.withCli:
+    if args.daemon:
       parser.error("--cli is incompatible with --daemon.")
 
   # start Aaptos
-  if options.daemon:
+  if args.daemon:
     # daemon mode
-    daemon = AaptosDaemon(pidfile, withDb=options.withDb)
+    daemon = AaptosDaemon(pidfile, withDb=args.withDb)
     getattr(daemon,mode)()
   else:
     # non-deamon mode
@@ -111,12 +123,12 @@ It can be started either as a deamon, or interactively, with or without db and c
     serverRunning = Event()
     loggerEnabled = Event()
     loggerEnabled.set()
-    s = serverThread(name="SOAPServer",daemon=True, kwargs = {"serverRunning":serverRunning})
-    if options.withDb:
+    s = serverThread(name="SOAPServer", SOAPServer=args.server, SOAPPort=args.port, daemon=True, kwargs = {"serverRunning":serverRunning})
+    if args.withDb:
       loggerThread(name="DBLogger",daemon=True, kwargs = {"serverRunning":serverRunning, "loggerEnabled":loggerEnabled}).start()
-    if options.withCli:
+    if args.withCli:
       s.start()
-      cliThread(name="CLIent", kwargs = {"serverRunning":serverRunning, "loggerEnabled":loggerEnabled}).start()
+      cliThread(name="CLIent", SOAPServer=args.server, SOAPPort=args.port, kwargs = {"serverRunning":serverRunning, "loggerEnabled":loggerEnabled}).start()
     else:
       try:
         s.run()

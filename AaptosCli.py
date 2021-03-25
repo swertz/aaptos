@@ -6,6 +6,7 @@ import npyscreen
 import AaptosSOAP
 import AaptosSettings
 import logging
+import argparse
 logging.basicConfig(filename='AaptosCli.log',level=logging.DEBUG)
         
 #####################################################
@@ -213,15 +214,17 @@ class MyAaptosCliApp(npyscreen.NPSAppManaged):
 
     keypress_timeout_default = 10
 
-    def __init__(self,soapProxy=None,loggerEnabled=None):
+    def __init__(self, soapProxy=None, loggerEnabled=None, SOAPServer=None, SOAPPort=None):
         super(MyAaptosCliApp, self).__init__()
         self.soapProxy=soapProxy
         self.loggerEnabled=loggerEnabled
+        self.SOAPServer = SOAPServer if SOAPServer else AaptosSettings.SOAPServer
+        self.SOAPPort = SOAPPort if SOAPPort else AaptosSettings.SOAPPort
 
     def onStart(self):
         # the SOAP client
         if self.soapProxy is None:
-          self.soapProxy = AaptosSOAP.SOAPProxy("http://%s:%d/"%(AaptosSettings.SOAPServer,AaptosSettings.SOAPPort))
+          self.soapProxy = AaptosSOAP.SOAPProxy("http://%s:%d/"%(self.SOAPServer,self.SOAPPort))
         # the forms
         self.addForm("MAIN", MainForm , name = "Welcome to Aaptos", minimum_lines=20, columns=108)
         for instr in self.instruments():
@@ -562,6 +565,10 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
         self.parentApp.switchFormNow()
 
 if __name__ == '__main__':
-    TA = MyAaptosCliApp()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--server", help="IP address of machine running the Aaptos SOAP server (default is localhost")
+    parser.add_argument("-p", "--port", type=int, help="Port of Aaptos SOAP server (default is 8080")
+    args = parser.parse_args()
+    TA = MyAaptosCliApp(SOAPServer=args.server, SOAPPort=args.port)
     TA.run()
 
