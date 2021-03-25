@@ -218,8 +218,8 @@ class MyAaptosCliApp(npyscreen.NPSAppManaged):
         super(MyAaptosCliApp, self).__init__()
         self.soapProxy=soapProxy
         self.loggerEnabled=loggerEnabled
-        self.SOAPServer = SOAPServer if SOAPServer else AaptosSettings.SOAPServer
-        self.SOAPPort = SOAPPort if SOAPPort else AaptosSettings.SOAPPort
+        self.SOAPServer = SOAPServer
+        self.SOAPPort = SOAPPort
 
     def onStart(self):
         # the SOAP client
@@ -566,8 +566,8 @@ class MainForm(npyscreen.FormBaseNewWithMenus):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--server", help="IP address of machine running the Aaptos SOAP server (default is localhost")
-    parser.add_argument("-p", "--port", type=int, help="Port of Aaptos SOAP server (default is 8080")
+    parser.add_argument("-s", "--server", default=AaptosSettings.SOAPServer, help="IP address of machine running the Aaptos SOAP server (default is {})".format(AaptosSettings.SOAPServer))
+    parser.add_argument("-p", "--port", type=int, default=AaptosSettings.SOAPPort, help="Port of Aaptos SOAP server (default is {})".format(AaptosSettings.SOAPPort))
     args = parser.parse_args()
     TA = MyAaptosCliApp(SOAPServer=args.server, SOAPPort=args.port)
     TA.run()

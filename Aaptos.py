@@ -3,7 +3,7 @@
 import time
 import sys
 from threading import Thread, Event
-from optparse import OptionParser
+from argparse import ArgumentParser
 from Daemon import Daemon
 import AaptosDb
 import AaptosSOAP
@@ -15,8 +15,8 @@ class serverThread(Thread):
     Thread.__init__(self,group=group, target=target, name=name, args=args, kwargs=kwargs)
     self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
-    self.SOAPServer = SOAPServer if SOAPServer else AaptosSettings.SOAPServer
-    self.SOAPPort = SOAPPort if SOAPPort else AaptosSettings.SOAPPort
+    self.SOAPServer = SOAPServer
+    self.SOAPPort = SOAPPort
   def run(self):
     server = AaptosSOAP.SOAPServer((self.SOAPServer, self.SOAPPort))
     server.registerObject(AaptosSOAP.aaptos())
@@ -30,8 +30,8 @@ class loggerThread(Thread):
     self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
     self.enabled = kwargs["loggerEnabled"]
-    self.SOAPServer = SOAPServer if SOAPServer else AaptosSettings.SOAPServer
-    self.SOAPPort = SOAPPort if SOAPPort else AaptosSettings.SOAPPort
+    self.SOAPServer = SOAPServer
+    self.SOAPPort = SOAPPort
   def run(self):
     self.serverRunning.wait()
     aaptos = AaptosSOAP.SOAPProxy("http://%s:%d/"%(self.SOAPServer, self.SOAPPort))
@@ -55,8 +55,8 @@ class cliThread(Thread):
     self.setDaemon(daemon)
     self.serverRunning = kwargs["serverRunning"]
     self.loggerEnabled = kwargs["loggerEnabled"]
-    self.SOAPServer = SOAPServer if SOAPServer else AaptosSettings.SOAPServer
-    self.SOAPPort = SOAPPort if SOAPPort else AaptosSettings.SOAPPort
+    self.SOAPServer = SOAPServer
+    self.SOAPPort = SOAPPort
   def run(self):
     self.serverRunning.wait()
     aaptos =  AaptosSOAP.SOAPProxy("http://%s:%d/"%(self.SOAPServer, self.SOAPPort))
@@ -80,10 +80,10 @@ def main():
   # pidfile
   pidfile = "/tmp/daemon-aaptos.pid"
   # options handling
-  usage="""%prog [options] [start|stop|restart]"""
+  usage="""%(prog)s [options] [start|stop|restart]"""
   description="""The Aaptos daemon.
 It can be started either as a deamon, or interactively, with or without db and cli components."""
-  parser = ArgumentParser(usage=usage,add_help_option=True,description=description)
+  parser = ArgumentParser(usage=usage, description=description)
   parser.add_argument("command", choices=["start", "stop", "restart"],
                       help="Daemon command")
   parser.add_argument("-D", "--daemon", action="store_true", default=False,
@@ -92,10 +92,10 @@ It can be started either as a deamon, or interactively, with or without db and c
                       help="also start the client.")
   parser.add_argument("-l", "--log", action="store_true", dest="withDb", default=False,
                       help="also start the database logger.")
-  parser.add_argument("-s", "--server", default="localhost",
-                      help="IP address of machine running the Aaptos SOAP server (default is localhost")
-  parser.add_argument("-p", "--port", type=int, default=8080,
-                      help="Port of Aaptos SOAP server (default is 8080")
+  parser.add_argument("-s", "--server", default=AaptosSettings.SOAPServer,
+                      help="IP address of machine running the Aaptos SOAP server (default is {})".format(AaptosSettings.SOAPServer))
+  parser.add_argument("-p", "--port", type=int, default=AaptosSettings.SOAPPort,
+                      help="Port of Aaptos SOAP server (default is {})".format(AaptosSettings.SOAPPort))
   args = parser.parse_args()
   if args.daemon:
     if not args.command:
