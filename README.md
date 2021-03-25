@@ -12,6 +12,8 @@ This application has multiple purposes. The goal is to implement all of these fu
 Installation
 ------------
 
+Instructions for CentOS7:
+
 ```
 sudo yum install python-virtualenv
 virtualenv --python=python2 venv-aaptos-py2
